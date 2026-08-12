@@ -1,4 +1,6 @@
-/* OmniSight Logo */
+/* ========================================
+   OmniSight Logo
+   ======================================== */
 
 .omnisight-logo {
   display: flex;
@@ -14,6 +16,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+
+  flex-shrink: 0;
 
   border-radius: 12px;
 
@@ -54,4 +58,756 @@
   background-clip: text;
 
   color: transparent;
+}
+
+/* ========================================
+   OmniSight Application
+   ======================================== */
+
+.app {
+  min-height: 100vh;
+}
+
+.dashboard {
+  min-height: 100vh;
+
+  display: flex;
+
+  background: #0b0b12;
+  color: #ffffff;
+}
+
+/* ========================================
+   Sidebar
+   ======================================== */
+
+.sidebar {
+  width: 250px;
+  min-height: 100vh;
+
+  padding: 28px 20px;
+
+  box-sizing: border-box;
+
+  background: #101018;
+
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar .omnisight-logo {
+  margin-bottom: 45px;
+}
+
+/* ========================================
+   Sidebar Navigation
+   ======================================== */
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+}
+
+.nav-item {
+  width: 100%;
+
+  padding: 12px 14px;
+
+  border: 0;
+  border-radius: 10px;
+
+  background: transparent;
+
+  color: #9999a8;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.nav-item:hover {
+  background: rgba(124, 108, 255, 0.08);
+
+  color: #ffffff;
+
+  transform: translateX(2px);
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid rgba(124, 108, 255, 0.8);
+  outline-offset: 2px;
+}
+
+.nav-item.active {
+  background: rgba(124, 108, 255, 0.15);
+
+  color: #ffffff;
+
+  box-shadow: inset 3px 0 0 #7c6cff;
+}
+
+/* ========================================
+   Main Dashboard Area
+   ======================================== */
+
+.dashboard-main {
+  flex: 1;
+
+  min-width: 0;
+
+  padding: 32px 40px;
+
+  box-sizing: border-box;
+}
+
+/* ========================================
+   Dashboard Header
+   ======================================== */
+
+.dashboard-header {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  margin-bottom: 45px;
+}
+
+.dashboard-header h1 {
+  margin: 0 0 6px;
+
+  font-size: 30px;
+  font-weight: 700;
+
+  line-height: 1.2;
+
+  letter-spacing: -0.8px;
+}
+
+.dashboard-header p {
+  margin: 0;
+
+  color: #8f8f9f;
+
+  font-size: 14px;
+}
+
+/* ========================================
+   Environment Status
+   ======================================== */
+
+.environment {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 8px 13px;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.03);
+
+  color: #b8b8c7;
+
+  font-size: 13px;
+  font-weight: 500;
+
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: #4ade80;
+
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
+/* ========================================
+   Dashboard Content
+   ======================================== */
+
+.dashboard-content {
+  padding: 28px;
+
+  border: 1px solid rgba(255, 255, 255, 0.07);
+
+  border-radius: 16px;
+
+  background: rgba(255, 255, 255, 0.025);
+
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.15);
+}
+
+/* ========================================
+   Dashboard Section Heading
+   ======================================== */
+
+.section-heading {
+  margin-bottom: 24px;
+}
+
+.section-heading h2 {
+  margin: 0 0 6px;
+
+  font-size: 20px;
+  font-weight: 600;
+
+  line-height: 1.3;
+}
+
+.section-heading p {
+  margin: 0;
+
+  color: #8f8f9f;
+
+  font-size: 14px;
+}
+
+/* ========================================
+   Dashboard Statistics
+   ======================================== */
+
+.stats-grid {
+  display: grid;
+
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+
+  gap: 16px;
+}
+
+.stat-card {
+  min-width: 0;
+
+  padding: 22px;
+
+  border: 1px solid rgba(255, 255, 255, 0.07);
+
+  border-radius: 14px;
+
+  background: rgba(255, 255, 255, 0.025);
+
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+
+  border-color: rgba(124, 108, 255, 0.3);
+
+  background: rgba(124, 108, 255, 0.05);
+
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.stat-label {
+  display: block;
+
+  margin-bottom: 12px;
+
+  color: #9999a8;
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.stat-value {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #ffffff;
+
+  font-size: 32px;
+  font-weight: 700;
+
+  line-height: 1;
+
+  letter-spacing: -1px;
+}
+
+.stat-meta {
+  color: #7c6cff;
+
+  font-size: 12px;
+}
+
+/* ========================================
+   Latest Build
+   ======================================== */
+
+.latest-build {
+  margin-top: 24px;
+
+  padding: 24px;
+
+  border: 1px solid rgba(255, 255, 255, 0.07);
+
+  border-radius: 14px;
+
+  background: rgba(255, 255, 255, 0.025);
+
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.12);
+
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.latest-build:hover {
+  border-color: rgba(124, 108, 255, 0.25);
+
+  background: rgba(124, 108, 255, 0.035);
+}
+
+/* ========================================
+   Latest Build Header
+   ======================================== */
+
+.latest-build-header {
+  display: flex;
+
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 20px;
+}
+
+.latest-build-label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #9999a8;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.7px;
+}
+
+.latest-build-header h3 {
+  margin: 0 0 6px;
+
+  color: #ffffff;
+
+  font-size: 19px;
+  font-weight: 600;
+
+  line-height: 1.3;
+
+  letter-spacing: -0.3px;
+}
+
+.latest-build-header p {
+  margin: 0;
+
+  color: #8f8f9f;
+
+  font-size: 13px;
+}
+
+/* ========================================
+   Build Status
+   ======================================== */
+
+.build-status {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 8px 12px;
+
+  border: 1px solid rgba(74, 222, 128, 0.18);
+
+  border-radius: 999px;
+
+  background: rgba(74, 222, 128, 0.07);
+
+  color: #86efac;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  white-space: nowrap;
+}
+
+.build-status-dot {
+  width: 7px;
+  height: 7px;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: #4ade80;
+
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.55);
+}
+
+/* ========================================
+   Build Divider
+   ======================================== */
+
+.build-divider {
+  height: 1px;
+
+  margin: 22px 0;
+
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* ========================================
+   Build Metrics
+   ======================================== */
+
+.build-metrics {
+  display: grid;
+
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  gap: 12px;
+}
+
+.build-metric {
+  padding: 14px;
+
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.build-metric span {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #8f8f9f;
+
+  font-size: 12px;
+}
+
+.build-metric strong {
+  display: block;
+
+  color: #ffffff;
+
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.build-metric.success strong {
+  color: #86efac;
+}
+
+/* ========================================
+   Builds Page
+   ======================================== */
+
+.build-list {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 12px;
+}
+
+.build-row {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 24px;
+
+  padding: 20px;
+
+  border: 1px solid rgba(255, 255, 255, 0.07);
+
+  border-radius: 14px;
+
+  background: rgba(255, 255, 255, 0.025);
+
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.build-row:hover {
+  transform: translateY(-1px);
+
+  border-color: rgba(124, 108, 255, 0.25);
+
+  background: rgba(124, 108, 255, 0.035);
+
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
+}
+
+.build-row-info {
+  min-width: 0;
+}
+
+.build-row-info h3 {
+  margin: 0 0 6px;
+
+  color: #ffffff;
+
+  font-size: 17px;
+  font-weight: 600;
+
+  line-height: 1.3;
+}
+
+.build-row-info p {
+  margin: 0;
+
+  color: #8f8f9f;
+
+  font-size: 13px;
+}
+
+.build-row-summary {
+  display: flex;
+
+  align-items: flex-end;
+
+  flex-direction: column;
+
+  gap: 12px;
+
+  flex-shrink: 0;
+}
+
+.build-row-metrics {
+  display: flex;
+
+  align-items: center;
+
+  gap: 18px;
+
+  color: #8f8f9f;
+
+  font-size: 12px;
+}
+
+.build-row-metrics span {
+  display: flex;
+
+  align-items: center;
+
+  gap: 5px;
+}
+
+.build-row-metrics strong {
+  color: #ffffff;
+
+  font-weight: 600;
+}
+
+.success-text {
+  color: #86efac !important;
+}
+
+/* ========================================
+   Responsive - Tablet
+   ======================================== */
+
+@media (max-width: 900px) {
+  .sidebar {
+    width: 210px;
+
+    padding: 24px 16px;
+  }
+
+  .dashboard-main {
+    padding: 28px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .build-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .build-row {
+    align-items: flex-start;
+
+    flex-direction: column;
+  }
+
+  .build-row-summary {
+    width: 100%;
+
+    align-items: flex-start;
+  }
+
+  .build-row-metrics {
+    flex-wrap: wrap;
+  }
+}
+
+/* ========================================
+   Responsive - Mobile
+   ======================================== */
+
+@media (max-width: 700px) {
+  .dashboard {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-height: auto;
+
+    padding: 18px;
+
+    border-right: none;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .sidebar .omnisight-logo {
+    margin-bottom: 20px;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+
+    overflow-x: auto;
+
+    padding-bottom: 4px;
+  }
+
+  .nav-item {
+    width: auto;
+
+    min-width: max-content;
+
+    text-align: center;
+  }
+
+  .nav-item.active {
+    box-shadow: inset 0 -3px 0 #7c6cff;
+  }
+
+  .dashboard-main {
+    padding: 24px 18px;
+  }
+
+  .dashboard-header {
+    align-items: flex-start;
+
+    flex-direction: column;
+
+    margin-bottom: 30px;
+  }
+
+  .dashboard-header h1 {
+    font-size: 26px;
+  }
+
+  .latest-build-header {
+    flex-direction: column;
+  }
+
+  .build-status {
+    align-self: flex-start;
+  }
+
+  .build-row {
+    padding: 18px;
+  }
+
+  .build-row-metrics {
+    gap: 10px 16px;
+  }
+}
+
+/* ========================================
+   Responsive - Small Mobile
+   ======================================== */
+
+@media (max-width: 450px) {
+  .dashboard-main {
+    padding: 20px 14px;
+  }
+
+  .dashboard-content {
+    padding: 20px;
+  }
+
+  .logo-text {
+    font-size: 21px;
+  }
+
+  .logo-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .stat-card {
+    padding: 18px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+  }
+
+  .latest-build {
+    padding: 18px;
+  }
+
+  .build-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .build-row {
+    padding: 16px;
+  }
+}
+
+/* ========================================
+   Accessibility
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-item,
+  .stat-card,
+  .latest-build,
+  .build-row {
+    transition: none;
+  }
 }

@@ -1,10 +1,10 @@
-import Logo from "./components/Logo";
 import "./App.css";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
   return (
     <div className="app">
-      <Logo />
+      <Dashboard />
     </div>
   );
 }
