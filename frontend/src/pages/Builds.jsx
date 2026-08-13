@@ -1,18 +1,26 @@
+import { builds } from "../data/mockData";
+
 function Builds() {
   return (
-    <main className="dashboard-main">
+    <>
+      {/* ========================================
+          Builds Header
+          ======================================== */}
       <header className="dashboard-header">
         <div>
           <h1>Builds</h1>
           <p>View and monitor your automated test builds.</p>
         </div>
 
-        <div className="environment">
-          <span className="status-dot"></span>
-          Staging
+        <div className="environment" aria-label="Current environment: Staging">
+          <span className="status-dot" aria-hidden="true" />
+          <span>Staging</span>
         </div>
       </header>
 
+      {/* ========================================
+          Build History
+          ======================================== */}
       <section className="dashboard-content">
         <div className="section-heading">
           <div>
@@ -21,114 +29,68 @@ function Builds() {
           </div>
         </div>
 
+        {/* ========================================
+            Build List
+            ======================================== */}
         <div className="build-list">
-          <article className="build-row">
-            <div className="build-row-info">
-              <span className="latest-build-label">BUILD</span>
+          {builds.map((build) => {
+            const isFailed = build.status === "Failed";
 
-              <h3>Build #124</h3>
+            return (
+              <article className="build-row" key={build.id}>
+                <div className="build-row-info">
+                  <span className="latest-build-label">BUILD</span>
 
-              <p>Staging deployment • 2 minutes ago</p>
-            </div>
+                  <h3>Build {build.id}</h3>
 
-            <div className="build-row-summary">
-              <span className="build-status">
-                <span className="build-status-dot"></span>
-                Passed
-              </span>
+                  <p>
+                    {build.deployment} • {build.time}
+                  </p>
+                </div>
 
-              <div className="build-row-metrics">
-                <span>
-                  Tests <strong>18</strong>
-                </span>
+                <div className="build-row-summary">
+                  <span
+                    className={`build-status ${
+                      isFailed ? "build-status-failed" : ""
+                    }`}
+                    aria-label={`Build status: ${build.status}`}
+                  >
+                    <span className="build-status-dot" aria-hidden="true" />
 
-                <span>
-                  Passed <strong className="success-text">18</strong>
-                </span>
+                    <span>{build.status}</span>
+                  </span>
 
-                <span>
-                  Failed <strong>0</strong>
-                </span>
+                  <div className="build-row-metrics">
+                    <span>
+                      Tests <strong>{build.tests}</strong>
+                    </span>
 
-                <span>
-                  UI Issues <strong>0</strong>
-                </span>
-              </div>
-            </div>
-          </article>
+                    <span>
+                      Passed{" "}
+                      <strong className="success-text">{build.passed}</strong>
+                    </span>
 
-          <article className="build-row">
-            <div className="build-row-info">
-              <span className="latest-build-label">BUILD</span>
+                    <span>
+                      Failed{" "}
+                      <strong className={build.failed > 0 ? "failed-text" : ""}>
+                        {build.failed}
+                      </strong>
+                    </span>
 
-              <h3>Build #123</h3>
-
-              <p>Staging deployment • 28 minutes ago</p>
-            </div>
-
-            <div className="build-row-summary">
-              <span className="build-status">
-                <span className="build-status-dot"></span>
-                Passed
-              </span>
-
-              <div className="build-row-metrics">
-                <span>
-                  Tests <strong>16</strong>
-                </span>
-
-                <span>
-                  Passed <strong className="success-text">16</strong>
-                </span>
-
-                <span>
-                  Failed <strong>0</strong>
-                </span>
-
-                <span>
-                  UI Issues <strong>0</strong>
-                </span>
-              </div>
-            </div>
-          </article>
-
-          <article className="build-row">
-            <div className="build-row-info">
-              <span className="latest-build-label">BUILD</span>
-
-              <h3>Build #122</h3>
-
-              <p>Staging deployment • 1 hour ago</p>
-            </div>
-
-            <div className="build-row-summary">
-              <span className="build-status">
-                <span className="build-status-dot"></span>
-                Passed
-              </span>
-
-              <div className="build-row-metrics">
-                <span>
-                  Tests <strong>20</strong>
-                </span>
-
-                <span>
-                  Passed <strong className="success-text">19</strong>
-                </span>
-
-                <span>
-                  Failed <strong>1</strong>
-                </span>
-
-                <span>
-                  UI Issues <strong>1</strong>
-                </span>
-              </div>
-            </div>
-          </article>
+                    <span>
+                      UI Issues{" "}
+                      <strong className={build.issues > 0 ? "failed-text" : ""}>
+                        {build.issues}
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
-    </main>
+    </>
   );
 }
 

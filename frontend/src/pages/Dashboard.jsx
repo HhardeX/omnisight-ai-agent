@@ -1,141 +1,126 @@
-import Logo from "../components/Logo";
+import { dashboardStats, latestBuild } from "../data/mockData";
 
 function Dashboard() {
   return (
-    <div className="dashboard">
+    <>
       {/* ========================================
-          Sidebar
+          Dashboard Header
           ======================================== */}
-      <aside className="sidebar">
-        <Logo />
+      <header className="dashboard-header">
+        <div>
+          <h1>Dashboard</h1>
+          <p>OmniSight QA overview</p>
+        </div>
 
-        <nav className="sidebar-nav" aria-label="Dashboard navigation">
-          <button className="nav-item active" type="button">
-            Dashboard
-          </button>
+        <div className="environment" aria-label="Current environment: Staging">
+          <span className="status-dot" aria-hidden="true" />
 
-          <button className="nav-item" type="button">
-            Builds
-          </button>
-
-          <button className="nav-item" type="button">
-            Issues
-          </button>
-
-          <button className="nav-item" type="button">
-            Screenshots
-          </button>
-
-          <button className="nav-item" type="button">
-            Pull Requests
-          </button>
-        </nav>
-      </aside>
+          <span>Staging</span>
+        </div>
+      </header>
 
       {/* ========================================
-          Main Dashboard
+          Dashboard Overview
           ======================================== */}
-      <main className="dashboard-main">
-        {/* Dashboard Header */}
-        <header className="dashboard-header">
+      <section className="dashboard-content">
+        <div className="section-heading">
           <div>
-            <h1>Dashboard</h1>
-            <p>OmniSight QA overview</p>
-          </div>
+            <h2>Overview</h2>
 
-          <div className="environment">
-            <span className="status-dot" />
-            <span>Staging</span>
+            <p>Monitor your automated UI testing activity.</p>
           </div>
-        </header>
+        </div>
 
         {/* ========================================
-            Dashboard Overview
+            Statistics
             ======================================== */}
-        <section className="dashboard-content">
-          <div className="section-heading">
-            <div>
-              <h2>Overview</h2>
-              <p>Monitor your automated UI testing activity.</p>
-            </div>
-          </div>
+        <div className="stats-grid">
+          <article className="stat-card">
+            <span className="stat-label">Total Builds</span>
 
-          {/* ========================================
-              Statistics
-              ======================================== */}
-          <div className="stats-grid">
-            <article className="stat-card">
-              <span className="stat-label">Total Builds</span>
+            <strong className="stat-value">{dashboardStats.totalBuilds}</strong>
 
-              <strong className="stat-value">12</strong>
-
-              <span className="stat-meta">+3 this week</span>
-            </article>
-
-            <article className="stat-card">
-              <span className="stat-label">Passed Builds</span>
-
-              <strong className="stat-value">10</strong>
-
-              <span className="stat-meta">83% success rate</span>
-            </article>
-
-            <article className="stat-card">
-              <span className="stat-label">UI Issues</span>
-
-              <strong className="stat-value">2</strong>
-
-              <span className="stat-meta">Needs review</span>
-            </article>
-          </div>
-
-          {/* ========================================
-              Latest Build
-              ======================================== */}
-          <article className="latest-build">
-            <div className="latest-build-header">
-              <div>
-                <span className="latest-build-label">Latest Build</span>
-
-                <h3>Build #124</h3>
-
-                <p>Staging deployment • 2 minutes ago</p>
-              </div>
-
-              <div className="build-status">
-                <span className="build-status-dot" />
-                <span>Passed</span>
-              </div>
-            </div>
-
-            <div className="build-divider" />
-
-            {/* Build Metrics */}
-            <div className="build-metrics">
-              <div className="build-metric">
-                <span>Tests</span>
-                <strong>18</strong>
-              </div>
-
-              <div className="build-metric success">
-                <span>Passed</span>
-                <strong>18</strong>
-              </div>
-
-              <div className="build-metric">
-                <span>Failed</span>
-                <strong>0</strong>
-              </div>
-
-              <div className="build-metric">
-                <span>UI Issues</span>
-                <strong>0</strong>
-              </div>
-            </div>
+            <span className="stat-meta">
+              +{dashboardStats.buildsThisWeek} this week
+            </span>
           </article>
-        </section>
-      </main>
-    </div>
+
+          <article className="stat-card">
+            <span className="stat-label">Passed Builds</span>
+
+            <strong className="stat-value">
+              {dashboardStats.passedBuilds}
+            </strong>
+
+            <span className="stat-meta">
+              {dashboardStats.successRate}% success rate
+            </span>
+          </article>
+
+          <article className="stat-card">
+            <span className="stat-label">UI Issues</span>
+
+            <strong className="stat-value">{dashboardStats.uiIssues}</strong>
+
+            <span className="stat-meta">Needs review</span>
+          </article>
+        </div>
+
+        {/* ========================================
+            Latest Build
+            ======================================== */}
+        <article className="latest-build">
+          <div className="latest-build-header">
+            <div>
+              <span className="latest-build-label">Latest Build</span>
+
+              <h3>Build {latestBuild.id}</h3>
+
+              <p>
+                {latestBuild.deployment} • {latestBuild.time}
+              </p>
+            </div>
+
+            <div className="build-status">
+              <span className="build-status-dot" aria-hidden="true" />
+
+              <span>{latestBuild.status}</span>
+            </div>
+          </div>
+
+          <div className="build-divider" />
+
+          {/* ========================================
+              Build Metrics
+              ======================================== */}
+          <div className="build-metrics">
+            <div className="build-metric">
+              <span>Tests</span>
+
+              <strong>{latestBuild.tests}</strong>
+            </div>
+
+            <div className="build-metric success">
+              <span>Passed</span>
+
+              <strong>{latestBuild.passed}</strong>
+            </div>
+
+            <div className="build-metric">
+              <span>Failed</span>
+
+              <strong>{latestBuild.failed}</strong>
+            </div>
+
+            <div className="build-metric">
+              <span>UI Issues</span>
+
+              <strong>{latestBuild.issues}</strong>
+            </div>
+          </div>
+        </article>
+      </section>
+    </>
   );
 }
 
