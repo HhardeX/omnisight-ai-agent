@@ -1,6 +1,46 @@
+import { useEffect, useState } from "react";
 import { dashboardStats, latestBuild } from "../data/mockData";
+import { getDashboardData } from "../services/dashboardService";
 
 function Dashboard() {
+  const [dashboardData, setDashboardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDashboard() {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const data = await getDashboardData();
+
+        if (isMounted) {
+          setDashboardData(data);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err.message);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadDashboard();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const stats = dashboardData?.stats || dashboardStats;
+  const build = dashboardData?.latestBuild || latestBuild;
+
   return (
     <>
       {/* ========================================
@@ -12,9 +52,11 @@ function Dashboard() {
           <p>OmniSight QA overview</p>
         </div>
 
-        <div className="environment" aria-label="Current environment: Staging">
+        <div
+          className="environment"
+          aria-label="Current environment: Staging"
+        >
           <span className="status-dot" aria-hidden="true" />
-
           <span>Staging</span>
         </div>
       </header>
@@ -26,10 +68,24 @@ function Dashboard() {
         <div className="section-heading">
           <div>
             <h2>Overview</h2>
-
             <p>Monitor your automated UI testing activity.</p>
           </div>
         </div>
+
+        {/* ========================================
+            API Status
+            ======================================== */}
+        {isLoading && (
+          <p role="status">
+            Loading dashboard data...
+          </p>
+        )}
+
+        {error && (
+          <p role="alert">
+            Backend unavailable. Showing mock dashboard data.
+          </p>
+        )}
 
         {/* ========================================
             Statistics
@@ -38,10 +94,12 @@ function Dashboard() {
           <article className="stat-card">
             <span className="stat-label">Total Builds</span>
 
-            <strong className="stat-value">{dashboardStats.totalBuilds}</strong>
+            <strong className="stat-value">
+              {stats.totalBuilds}
+            </strong>
 
             <span className="stat-meta">
-              +{dashboardStats.buildsThisWeek} this week
+              +{stats.buildsThisWeek} this week
             </span>
           </article>
 
@@ -49,20 +107,24 @@ function Dashboard() {
             <span className="stat-label">Passed Builds</span>
 
             <strong className="stat-value">
-              {dashboardStats.passedBuilds}
+              {stats.passedBuilds}
             </strong>
 
             <span className="stat-meta">
-              {dashboardStats.successRate}% success rate
+              {stats.successRate}% success rate
             </span>
           </article>
 
           <article className="stat-card">
             <span className="stat-label">UI Issues</span>
 
-            <strong className="stat-value">{dashboardStats.uiIssues}</strong>
+            <strong className="stat-value">
+              {stats.uiIssues}
+            </strong>
 
-            <span className="stat-meta">Needs review</span>
+            <span className="stat-meta">
+              Needs review
+            </span>
           </article>
         </div>
 
@@ -72,19 +134,24 @@ function Dashboard() {
         <article className="latest-build">
           <div className="latest-build-header">
             <div>
-              <span className="latest-build-label">Latest Build</span>
+              <span className="latest-build-label">
+                Latest Build
+              </span>
 
-              <h3>Build {latestBuild.id}</h3>
+              <h3>Build {build.id}</h3>
 
               <p>
-                {latestBuild.deployment} • {latestBuild.time}
+                {build.deployment} • {build.time}
               </p>
             </div>
 
             <div className="build-status">
-              <span className="build-status-dot" aria-hidden="true" />
+              <span
+                className="build-status-dot"
+                aria-hidden="true"
+              />
 
-              <span>{latestBuild.status}</span>
+              <span>{build.status}</span>
             </div>
           </div>
 
@@ -96,26 +163,22 @@ function Dashboard() {
           <div className="build-metrics">
             <div className="build-metric">
               <span>Tests</span>
-
-              <strong>{latestBuild.tests}</strong>
+              <strong>{build.tests}</strong>
             </div>
 
             <div className="build-metric success">
               <span>Passed</span>
-
-              <strong>{latestBuild.passed}</strong>
+              <strong>{build.passed}</strong>
             </div>
 
             <div className="build-metric">
               <span>Failed</span>
-
-              <strong>{latestBuild.failed}</strong>
+              <strong>{build.failed}</strong>
             </div>
 
             <div className="build-metric">
               <span>UI Issues</span>
-
-              <strong>{latestBuild.issues}</strong>
+              <strong>{build.issues}</strong>
             </div>
           </div>
         </article>
@@ -125,3 +188,4 @@ function Dashboard() {
 }
 
 export default Dashboard;
+
