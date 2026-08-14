@@ -1,7 +1,7 @@
 
 import pytest
 from pathlib import Path
-
+from app.services.providers.null_vlm import NullVLMProvider
 from app.models.audit import BrowserAuditResult, ElementBounds
 from app.models.visual import VisualAuditInput, VisualAuditResponse
 from app.services.visual_audit import VisualAuditService
@@ -67,3 +67,22 @@ def test_visual_audit_service_prepares_input_from_browser_result() -> None:
     assert visual_input.screenshot_path == str(browser_result.screenshot_path)
     assert visual_input.dom_snapshot == browser_result.dom_snapshot
     assert visual_input.element_bounds == browser_result.element_bounds
+    
+@pytest.mark.asyncio
+async def test_visual_audit_service_works_with_null_provider() -> None:
+    audit_input = VisualAuditInput(
+        job_id="test-job",
+        target_url="https://example.com",
+        viewport="desktop",
+        screenshot_path="artifacts/test.png",
+        dom_snapshot="<html></html>",
+    )
+
+    service = VisualAuditService(NullVLMProvider())
+
+    result = await service.audit(audit_input)
+
+    assert result.job_id == "test-job"
+    assert result.target_url == "https://example.com"
+    assert result.viewport == "desktop"
+    assert result.defect_count == 0
