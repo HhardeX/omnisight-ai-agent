@@ -86,3 +86,33 @@ async def test_visual_audit_service_works_with_null_provider() -> None:
     assert result.target_url == "https://example.com"
     assert result.viewport == "desktop"
     assert result.defect_count == 0
+    
+def test_visual_audit_response_supports_structured_defect() -> None:
+    from app.models.audit import ElementBounds
+    from app.models.visual import VisualAuditResponse, VisualDefect
+
+    defect = VisualDefect(
+        element_selector="#login",
+        defect_type="overlap",
+        description="Login button overlaps the form container.",
+        suggested_css="margin-top: 8px;",
+        confidence_score=0.95,
+        bounding_box=ElementBounds(
+            x=10,
+            y=20,
+            width=100,
+            height=40,
+        ),
+    )
+
+    response = VisualAuditResponse(
+        job_id="test-job",
+        target_url="https://example.com",
+        viewport="desktop",
+        defects=[defect],
+    )
+
+    assert response.defect_count == 1
+    assert response.defects[0].defect_type == "overlap"
+    assert response.defects[0].confidence_score == 0.95
+    assert response.defects[0].bounding_box is not None
