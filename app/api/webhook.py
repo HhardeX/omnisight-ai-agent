@@ -7,6 +7,7 @@ from app.browser.navigator import BrowserManager
 from app.models.audit import BrowserAuditResult
 from app.models.jobs import BuildEvent
 from app.services.providers.rule_based_vlm import RuleBasedVLMProvider
+from app.services.result_store import result_store
 from app.services.visual_audit import VisualAuditService
 
 
@@ -33,6 +34,7 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
         await manager.navigate(str(event.target_url))
 
         screenshot_path = Path("artifacts") / f"{job_id}-desktop.png"
+
         await manager.screenshot(
             screenshot_path,
             full_page=True,
@@ -61,10 +63,12 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
             f"completed browser capture. "
             f"DOM size: {audit_result.dom_size} characters"
         )
+
         print(
             f"[OmniSight] Screenshot saved: "
             f"{audit_result.screenshot_path}"
         )
+
         visual_service = VisualAuditService(
             RuleBasedVLMProvider()
         )
@@ -75,6 +79,11 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
 
         visual_result = await visual_service.audit(
             visual_input
+        )
+
+        result_store.save(
+            audit_result,
+            visual_result,
         )
 
         print(
@@ -95,7 +104,7 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
             f"[OmniSight] Audit job {job_id} failed: "
             f"{type(exc).__name__}: {exc}"
         )
-        
+
     finally:
         await manager.stop()
 
