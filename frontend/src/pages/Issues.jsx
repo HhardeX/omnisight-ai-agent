@@ -1,6 +1,50 @@
-import { issues, issueStats } from "../data/mockData";
+import { useEffect, useState } from "react";
+import { issues as mockIssues, issueStats as mockIssueStats } from "../data/mockData";
+import { getIssues } from "../services/issueService";
 
 function Issues() {
+  const [issueData, setIssueData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadIssues() {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const data = await getIssues();
+
+        if (isMounted) {
+          setIssueData(data);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err.message || "Unable to load issues");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadIssues();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const apiIssues = Array.isArray(issueData)
+    ? issueData
+    : issueData?.issues;
+
+  const displayedIssues = apiIssues || mockIssues;
+  const stats = issueData?.stats || mockIssueStats;
+
   return (
     <>
       <header className="dashboard-header">
@@ -9,7 +53,10 @@ function Issues() {
           <p>Review and monitor detected UI issues.</p>
         </div>
 
-        <div className="environment" aria-label="Current environment: Staging">
+        <div
+          className="environment"
+          aria-label="Current environment: Staging"
+        >
           <span className="status-dot" aria-hidden="true" />
           <span>Staging</span>
         </div>
@@ -23,28 +70,40 @@ function Issues() {
           </div>
         </div>
 
+        {isLoading && (
+          <p role="status">
+            Loading issues...
+          </p>
+        )}
+
+        {error && (
+          <p role="alert">
+            Backend unavailable. Showing mock issue data.
+          </p>
+        )}
+
         <div className="stats-grid issues-stats">
           <article className="stat-card">
             <span className="stat-label">Total Issues</span>
-            <strong className="stat-value">{issueStats.total}</strong>
+            <strong className="stat-value">{stats.total}</strong>
             <span className="stat-meta">Detected recently</span>
           </article>
 
           <article className="stat-card">
             <span className="stat-label">Open Issues</span>
-            <strong className="stat-value">{issueStats.open}</strong>
+            <strong className="stat-value">{stats.open}</strong>
             <span className="stat-meta">Needs attention</span>
           </article>
 
           <article className="stat-card">
             <span className="stat-label">Resolved</span>
-            <strong className="stat-value">{issueStats.resolved}</strong>
+            <strong className="stat-value">{stats.resolved}</strong>
             <span className="stat-meta">Successfully fixed</span>
           </article>
         </div>
 
         <div className="issue-list">
-          {issues.map((issue) => (
+          {displayedIssues.map((issue) => (
             <article className="issue-card" key={issue.id}>
               <div className="issue-card-main">
                 <div className="issue-card-header">
@@ -68,7 +127,9 @@ function Issues() {
 
                     <span
                       className={`status-badge ${
-                        issue.status === "Open" ? "warning" : "success"
+                        issue.status === "Open"
+                          ? "warning"
+                          : "success"
                       }`}
                     >
                       {issue.status}
@@ -76,7 +137,9 @@ function Issues() {
                   </div>
                 </div>
 
-                <p className="issue-description">{issue.description}</p>
+                <p className="issue-description">
+                  {issue.description}
+                </p>
 
                 <div className="issue-meta">
                   <span>
