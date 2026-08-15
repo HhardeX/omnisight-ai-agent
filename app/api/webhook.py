@@ -96,11 +96,6 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
             f"{type(exc).__name__}: {exc}"
         )
         
-        print(
-            f"[OmniSight] Captured element bounds: "
-            f"{list(audit_result.element_bounds.keys())}"
-)
-
     finally:
         await manager.stop()
 
