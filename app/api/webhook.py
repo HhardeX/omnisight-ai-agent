@@ -6,6 +6,8 @@ from fastapi import APIRouter, BackgroundTasks, status
 from app.browser.navigator import BrowserManager
 from app.models.audit import BrowserAuditResult
 from app.models.jobs import BuildEvent
+from app.services.providers.rule_based_vlm import RuleBasedVLMProvider
+from app.services.visual_audit import VisualAuditService
 
 
 router = APIRouter(
@@ -63,6 +65,30 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
             f"[OmniSight] Screenshot saved: "
             f"{audit_result.screenshot_path}"
         )
+        visual_service = VisualAuditService(
+            RuleBasedVLMProvider()
+        )
+
+        visual_input = visual_service.prepare_input(
+            audit_result
+        )
+
+        visual_result = await visual_service.audit(
+            visual_input
+        )
+
+        print(
+            f"[OmniSight] Visual audit completed. "
+            f"Defects detected: {visual_result.defect_count}"
+        )
+
+        for defect in visual_result.defects:
+            print(
+                f"[OmniSight] Defect: "
+                f"{defect.defect_type} | "
+                f"{defect.element_selector} | "
+                f"{defect.description}"
+            )
 
     except Exception as exc:
         print(
