@@ -116,3 +116,13 @@ def test_visual_audit_response_supports_structured_defect() -> None:
     assert response.defects[0].defect_type == "overlap"
     assert response.defects[0].confidence_score == 0.95
     assert response.defects[0].bounding_box is not None
+    
+def test_vlm_provider_factory_returns_provider() -> None:
+    from app.services.providers.factory import create_vlm_provider
+    from app.services.providers.null_vlm import NullVLMProvider
+    from app.services.vlm import VLMProvider
+
+    provider = create_vlm_provider()
+
+    assert isinstance(provider, VLMProvider)
+    assert isinstance(provider, NullVLMProvider)
