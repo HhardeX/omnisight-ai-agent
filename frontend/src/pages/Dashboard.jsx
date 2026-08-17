@@ -1,51 +1,83 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { dashboardStats, latestBuild } from "../data/mockData";
 import { getDashboardData } from "../services/dashboardService";
 
 function Dashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadDashboard() {
-      try {
+  const loadDashboard = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
         setIsLoading(true);
-        setError(null);
-
-        const data = await getDashboardData();
-
-        if (isMounted) {
-          setDashboardData(data);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err.message);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
       }
+
+      setError(null);
+
+      const data = await getDashboardData();
+      setDashboardData(data);
+    } catch (err) {
+      setError(err.message || "Unable to load dashboard data.");
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
-
-    loadDashboard();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
-  const stats = dashboardData?.stats || dashboardStats;
-  const build = dashboardData?.latestBuild || latestBuild;
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  const hasBackendData = Boolean(dashboardData);
+
+  const stats = hasBackendData
+    ? {
+        totalBuilds: dashboardData.total_builds ?? 0,
+        uiIssues: dashboardData.total_issues ?? 0,
+        totalScreenshots: dashboardData.total_screenshots ?? 0,
+      }
+    : {
+        totalBuilds: dashboardStats.totalBuilds ?? 0,
+        uiIssues: dashboardStats.uiIssues ?? 0,
+        totalScreenshots: 0,
+      };
+
+  const backendBuild = dashboardData?.latest_build;
+
+  const build = backendBuild
+    ? {
+        id: backendBuild.job_id,
+        deployment: backendBuild.target_url,
+        viewport: backendBuild.viewport,
+        domSize: backendBuild.dom_size ?? 0,
+      }
+    : hasBackendData
+      ? null
+      : {
+          id: latestBuild.id,
+          deployment: latestBuild.deployment,
+          viewport: latestBuild.time,
+          domSize: 0,
+        };
+
+  const formatNumber = (value) => {
+    return new Intl.NumberFormat().format(value);
+  };
+
+  const formatDomSize = (value) => {
+    if (!value) {
+      return "0";
+    }
+
+    return `${formatNumber(value)} chars`;
+  };
 
   return (
     <>
-      {/* ========================================
-          Dashboard Header
-          ======================================== */}
       <header className="dashboard-header">
         <div>
           <h1>Dashboard</h1>
@@ -54,27 +86,34 @@ function Dashboard() {
 
         <div
           className="environment"
-          aria-label="Current environment: Staging"
+          aria-label={
+            error
+              ? "Backend connection unavailable"
+              : "Backend connection active"
+          }
         >
           <span className="status-dot" aria-hidden="true" />
-          <span>Staging</span>
+          <span>{error ? "Offline" : "Connected"}</span>
         </div>
       </header>
 
-      {/* ========================================
-          Dashboard Overview
-          ======================================== */}
       <section className="dashboard-content">
         <div className="section-heading">
           <div>
             <h2>Overview</h2>
             <p>Monitor your automated UI testing activity.</p>
           </div>
+
+          <button
+            type="button"
+            onClick={() => loadDashboard(true)}
+            disabled={isLoading || isRefreshing}
+            className="refresh-button"
+          >
+            {isRefreshing ? "Refreshing..." : "Refresh"}
+          </button>
         </div>
 
-        {/* ========================================
-            API Status
-            ======================================== */}
         {isLoading && (
           <p role="status">
             Loading dashboard data...
@@ -83,35 +122,20 @@ function Dashboard() {
 
         {error && (
           <p role="alert">
-            Backend unavailable. Showing mock dashboard data.
+            Backend unavailable. Showing available dashboard data.
           </p>
         )}
 
-        {/* ========================================
-            Statistics
-            ======================================== */}
         <div className="stats-grid">
           <article className="stat-card">
             <span className="stat-label">Total Builds</span>
 
             <strong className="stat-value">
-              {stats.totalBuilds}
+              {formatNumber(stats.totalBuilds)}
             </strong>
 
             <span className="stat-meta">
-              +{stats.buildsThisWeek} this week
-            </span>
-          </article>
-
-          <article className="stat-card">
-            <span className="stat-label">Passed Builds</span>
-
-            <strong className="stat-value">
-              {stats.passedBuilds}
-            </strong>
-
-            <span className="stat-meta">
-              {stats.successRate}% success rate
+              Automated UI audits
             </span>
           </article>
 
@@ -119,18 +143,27 @@ function Dashboard() {
             <span className="stat-label">UI Issues</span>
 
             <strong className="stat-value">
-              {stats.uiIssues}
+              {formatNumber(stats.uiIssues)}
             </strong>
 
             <span className="stat-meta">
-              Needs review
+              Detected visual defects
+            </span>
+          </article>
+
+          <article className="stat-card">
+            <span className="stat-label">Screenshots</span>
+
+            <strong className="stat-value">
+              {formatNumber(stats.totalScreenshots)}
+            </strong>
+
+            <span className="stat-meta">
+              Captured during audits
             </span>
           </article>
         </div>
 
-        {/* ========================================
-            Latest Build
-            ======================================== */}
         <article className="latest-build">
           <div className="latest-build-header">
             <div>
@@ -138,49 +171,86 @@ function Dashboard() {
                 Latest Build
               </span>
 
-              <h3>Build {build.id}</h3>
+              {build ? (
+                <>
+                  <h3>Build {build.id}</h3>
 
-              <p>
-                {build.deployment} • {build.time}
-              </p>
+                  <p>
+                    {build.deployment}
+                    {" • "}
+                    {build.viewport}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3>No builds available</h3>
+
+                  <p>
+                    Run an OmniSight audit to generate build data.
+                  </p>
+                </>
+              )}
             </div>
 
-            <div className="build-status">
-              <span
-                className="build-status-dot"
-                aria-hidden="true"
-              />
+            {build && (
+              <div className="build-status">
+                <span
+                  className="build-status-dot"
+                  aria-hidden="true"
+                />
 
-              <span>{build.status}</span>
-            </div>
+                <span>Audited</span>
+              </div>
+            )}
           </div>
 
           <div className="build-divider" />
 
-          {/* ========================================
-              Build Metrics
-              ======================================== */}
-          <div className="build-metrics">
-            <div className="build-metric">
-              <span>Tests</span>
-              <strong>{build.tests}</strong>
-            </div>
+          {build ? (
+            <div className="build-metrics">
+              <div className="build-metric">
+                <span>Job ID</span>
+                <strong>{build.id}</strong>
+              </div>
 
-            <div className="build-metric success">
-              <span>Passed</span>
-              <strong>{build.passed}</strong>
-            </div>
+              <div className="build-metric">
+                <span>Viewport</span>
+                <strong>{build.viewport}</strong>
+              </div>
 
-            <div className="build-metric">
-              <span>Failed</span>
-              <strong>{build.failed}</strong>
-            </div>
+              <div className="build-metric">
+                <span>DOM Size</span>
+                <strong>{formatDomSize(build.domSize)}</strong>
+              </div>
 
-            <div className="build-metric">
-              <span>UI Issues</span>
-              <strong>{build.issues}</strong>
+              <div className="build-metric">
+                <span>UI Issues</span>
+                <strong>{formatNumber(stats.uiIssues)}</strong>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="build-metrics">
+              <div className="build-metric">
+                <span>Status</span>
+                <strong>Waiting</strong>
+              </div>
+
+              <div className="build-metric">
+                <span>Builds</span>
+                <strong>0</strong>
+              </div>
+
+              <div className="build-metric">
+                <span>Screenshots</span>
+                <strong>0</strong>
+              </div>
+
+              <div className="build-metric">
+                <span>Issues</span>
+                <strong>0</strong>
+              </div>
+            </div>
+          )}
         </article>
       </section>
     </>
@@ -188,4 +258,3 @@ function Dashboard() {
 }
 
 export default Dashboard;
-
