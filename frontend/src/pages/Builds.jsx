@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { builds as mockBuilds } from "../data/mockData";
 import { getBuilds } from "../services/buildService";
 
 function Builds() {
-  const [builds, setBuilds] = useState(mockBuilds);
+  const [builds, setBuilds] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -17,17 +16,19 @@ function Builds() {
 
         const data = await getBuilds();
 
-        if (isMounted) {
-          const realBuilds = Array.isArray(data)
-            ? data
-            : data?.builds || [];
-
-          setBuilds(realBuilds.length > 0 ? realBuilds : mockBuilds);
+        if (!isMounted) {
+          return;
         }
+
+        const realBuilds = Array.isArray(data)
+          ? data
+          : data?.builds || [];
+
+        setBuilds(realBuilds);
       } catch (err) {
         if (isMounted) {
           setError(err.message || "Unable to load builds.");
-          setBuilds(mockBuilds);
+          setBuilds([]);
         }
       } finally {
         if (isMounted) {
@@ -48,7 +49,7 @@ function Builds() {
       <header className="dashboard-header">
         <div>
           <h1>Builds</h1>
-          <p>View and monitor your automated test builds.</p>
+          <p>View and monitor your automated UI testing builds.</p>
         </div>
 
         <div
@@ -76,80 +77,51 @@ function Builds() {
 
         {error && (
           <p role="alert">
-            Backend unavailable. Showing mock build data.
+            Unable to load build data from the backend.
           </p>
         )}
 
-        <div className="build-list">
-          {builds.map((build) => {
-            const isFailed = build.status === "Failed";
+        {!isLoading && !error && builds.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-content">
+              <h3>No builds yet</h3>
+              <p>
+                No completed OmniSight builds are currently available.
+                Run an audit to generate build results.
+              </p>
+            </div>
+          </div>
+        )}
 
-            return (
-              <article className="build-row" key={build.id}>
+        {!isLoading && builds.length > 0 && (
+          <div className="build-list">
+            {builds.map((build) => (
+              <article className="build-row" key={build.job_id}>
                 <div className="build-row-info">
                   <span className="latest-build-label">BUILD</span>
 
-                  <h3>Build {build.id}</h3>
+                  <h3>Build {build.job_id}</h3>
 
                   <p>
-                    {build.deployment} • {build.time}
+                    {build.target_url} {" • "} {build.viewport}
                   </p>
                 </div>
 
                 <div className="build-row-summary">
-                  <span
-                    className={`build-status ${
-                      isFailed ? "build-status-failed" : ""
-                    }`}
-                    aria-label={`Build status: ${build.status}`}
-                  >
-                    <span
-                      className="build-status-dot"
-                      aria-hidden="true"
-                    />
-
-                    <span>{build.status}</span>
+                  <span className="status-badge neutral">
+                    Backend Result
                   </span>
 
                   <div className="build-row-metrics">
                     <span>
-                      Tests <strong>{build.tests}</strong>
-                    </span>
-
-                    <span>
-                      Passed{" "}
-                      <strong className="success-text">
-                        {build.passed}
-                      </strong>
-                    </span>
-
-                    <span>
-                      Failed{" "}
-                      <strong
-                        className={
-                          build.failed > 0 ? "failed-text" : ""
-                        }
-                      >
-                        {build.failed}
-                      </strong>
-                    </span>
-
-                    <span>
-                      UI Issues{" "}
-                      <strong
-                        className={
-                          build.issues > 0 ? "failed-text" : ""
-                        }
-                      >
-                        {build.issues}
-                      </strong>
+                      DOM Size <strong>{build.dom_size ?? "—"}</strong>
                     </span>
                   </div>
                 </div>
               </article>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
     </>
   );
