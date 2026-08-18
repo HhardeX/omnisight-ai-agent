@@ -19,6 +19,7 @@ function Dashboard() {
       setError(null);
 
       const data = await getDashboardData();
+
       setDashboardData(data);
     } catch (err) {
       setError(err.message || "Unable to load dashboard data.");
@@ -32,20 +33,30 @@ function Dashboard() {
     loadDashboard();
   }, [loadDashboard]);
 
-  const hasBackendData = Boolean(dashboardData);
-
-  const stats = hasBackendData
+  /*
+   * The backend currently provides:
+   * - total_builds
+   * - total_issues
+   * - total_screenshots
+   * - latest_build
+   *
+   * Some older dashboard fields are not available from the backend yet,
+   * so we keep their mock values until the backend exposes them.
+   */
+  const stats = dashboardData
     ? {
         totalBuilds: dashboardData.total_builds ?? 0,
+        passedBuilds: dashboardStats.passedBuilds,
+        successRate: dashboardStats.successRate,
         uiIssues: dashboardData.total_issues ?? 0,
         totalScreenshots: dashboardData.total_screenshots ?? 0,
       }
-    : {
-        totalBuilds: dashboardStats.totalBuilds ?? 0,
-        uiIssues: dashboardStats.uiIssues ?? 0,
-        totalScreenshots: 0,
-      };
+    : dashboardStats;
 
+  /*
+   * Convert the backend latest_build response into the shape
+   * expected by the existing dashboard UI.
+   */
   const backendBuild = dashboardData?.latest_build;
 
   const build = backendBuild
@@ -53,31 +64,15 @@ function Dashboard() {
         id: backendBuild.job_id,
         deployment: backendBuild.target_url,
         viewport: backendBuild.viewport,
-        domSize: backendBuild.dom_size ?? 0,
+        domSize: backendBuild.dom_size,
+        status: "Completed",
+        issues: stats.uiIssues,
       }
-    : hasBackendData
-      ? null
-      : {
-          id: latestBuild.id,
-          deployment: latestBuild.deployment,
-          viewport: latestBuild.time,
-          domSize: 0,
-        };
-
-  const formatNumber = (value) => {
-    return new Intl.NumberFormat().format(value);
-  };
-
-  const formatDomSize = (value) => {
-    if (!value) {
-      return "0";
-    }
-
-    return `${formatNumber(value)} chars`;
-  };
+    : latestBuild;
 
   return (
     <>
+      {/* Dashboard Header */}
       <header className="dashboard-header">
         <div>
           <h1>Dashboard</h1>
@@ -86,17 +81,14 @@ function Dashboard() {
 
         <div
           className="environment"
-          aria-label={
-            error
-              ? "Backend connection unavailable"
-              : "Backend connection active"
-          }
+          aria-label="Current environment: Staging"
         >
           <span className="status-dot" aria-hidden="true" />
-          <span>{error ? "Offline" : "Connected"}</span>
+          <span>Staging</span>
         </div>
       </header>
 
+      {/* Dashboard Content */}
       <section className="dashboard-content">
         <div className="section-heading">
           <div>
@@ -107,31 +99,33 @@ function Dashboard() {
           <button
             type="button"
             onClick={() => loadDashboard(true)}
-            disabled={isLoading || isRefreshing}
-            className="refresh-button"
+            disabled={isRefreshing}
           >
             {isRefreshing ? "Refreshing..." : "Refresh"}
           </button>
         </div>
 
+        {/* Loading State */}
         {isLoading && (
           <p role="status">
             Loading dashboard data...
           </p>
         )}
 
+        {/* Error State */}
         {error && (
           <p role="alert">
             Backend unavailable. Showing available dashboard data.
           </p>
         )}
 
+        {/* Statistics */}
         <div className="stats-grid">
           <article className="stat-card">
             <span className="stat-label">Total Builds</span>
 
             <strong className="stat-value">
-              {formatNumber(stats.totalBuilds)}
+              {stats.totalBuilds}
             </strong>
 
             <span className="stat-meta">
@@ -143,11 +137,11 @@ function Dashboard() {
             <span className="stat-label">UI Issues</span>
 
             <strong className="stat-value">
-              {formatNumber(stats.uiIssues)}
+              {stats.uiIssues}
             </strong>
 
             <span className="stat-meta">
-              Detected visual defects
+              Issues detected
             </span>
           </article>
 
@@ -155,7 +149,7 @@ function Dashboard() {
             <span className="stat-label">Screenshots</span>
 
             <strong className="stat-value">
-              {formatNumber(stats.totalScreenshots)}
+              {stats.totalScreenshots}
             </strong>
 
             <span className="stat-meta">
@@ -164,6 +158,7 @@ function Dashboard() {
           </article>
         </div>
 
+        {/* Latest Build */}
         <article className="latest-build">
           <div className="latest-build-header">
             <div>
@@ -171,86 +166,63 @@ function Dashboard() {
                 Latest Build
               </span>
 
-              {build ? (
-                <>
-                  <h3>Build {build.id}</h3>
+              <h3>
+                {build.id ? `Build ${build.id}` : "No builds yet"}
+              </h3>
 
-                  <p>
-                    {build.deployment}
-                    {" • "}
-                    {build.viewport}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h3>No builds available</h3>
-
-                  <p>
-                    Run an OmniSight audit to generate build data.
-                  </p>
-                </>
-              )}
+              <p>
+                {build.deployment || "No target URL available"}{" "}
+                •{" "}
+                {build.viewport || build.time || "No viewport available"}
+              </p>
             </div>
 
-            {build && (
-              <div className="build-status">
-                <span
-                  className="build-status-dot"
-                  aria-hidden="true"
-                />
+            <div className="build-status">
+              <span
+                className="build-status-dot"
+                aria-hidden="true"
+              />
 
-                <span>Audited</span>
-              </div>
-            )}
+              <span>{build.status || "Unknown"}</span>
+            </div>
           </div>
 
           <div className="build-divider" />
 
-          {build ? (
-            <div className="build-metrics">
-              <div className="build-metric">
-                <span>Job ID</span>
-                <strong>{build.id}</strong>
-              </div>
+          {/* Latest Build Metrics */}
+          <div className="build-metrics">
+            <div className="build-metric">
+              <span>DOM Size</span>
 
-              <div className="build-metric">
-                <span>Viewport</span>
-                <strong>{build.viewport}</strong>
-              </div>
-
-              <div className="build-metric">
-                <span>DOM Size</span>
-                <strong>{formatDomSize(build.domSize)}</strong>
-              </div>
-
-              <div className="build-metric">
-                <span>UI Issues</span>
-                <strong>{formatNumber(stats.uiIssues)}</strong>
-              </div>
+              <strong>
+                {build.domSize ?? build.tests ?? "-"}
+              </strong>
             </div>
-          ) : (
-            <div className="build-metrics">
-              <div className="build-metric">
-                <span>Status</span>
-                <strong>Waiting</strong>
-              </div>
 
-              <div className="build-metric">
-                <span>Builds</span>
-                <strong>0</strong>
-              </div>
+            <div className="build-metric success">
+              <span>Passed</span>
 
-              <div className="build-metric">
-                <span>Screenshots</span>
-                <strong>0</strong>
-              </div>
-
-              <div className="build-metric">
-                <span>Issues</span>
-                <strong>0</strong>
-              </div>
+              <strong>
+                {build.passed ?? "-"}
+              </strong>
             </div>
-          )}
+
+            <div className="build-metric">
+              <span>Failed</span>
+
+              <strong>
+                {build.failed ?? "-"}
+              </strong>
+            </div>
+
+            <div className="build-metric">
+              <span>UI Issues</span>
+
+              <strong>
+                {build.issues ?? 0}
+              </strong>
+            </div>
+          </div>
         </article>
       </section>
     </>
