@@ -122,6 +122,8 @@ async def receive_build_event(
     """
     job_id = str(uuid4())
 
+    print(f"[OmniSight] Scheduling audit job {job_id}")
+
     background_tasks.add_task(
         run_audit_job,
         job_id,
