@@ -19,94 +19,122 @@ router = APIRouter(
 
 async def run_audit_job(job_id: str, event: BuildEvent) -> None:
     """
-    Execute a browser-based OmniSight audit in the background.
+    Execute responsive browser-based OmniSight audits.
     """
+
     print(
         f"[OmniSight] Starting audit job {job_id} "
         f"for {event.repository}@{event.commit_sha}"
     )
 
-    manager = BrowserManager(headless=True)
+    visual_service = VisualAuditService(
+        RuleBasedVLMProvider()
+    )
 
-    try:
-        await manager.start(viewport="desktop")
+    for viewport_name in BrowserManager.VIEWPORTS:
+        manager = BrowserManager(headless=True)
 
-        await manager.navigate(str(event.target_url))
-
-        screenshot_path = Path("artifacts") / f"{job_id}-desktop.png"
-
-        await manager.screenshot(
-            screenshot_path,
-            full_page=True,
-        )
-
-        dom_snapshot = await manager.get_dom_snapshot()
-
-        h1_bounds = await manager.get_element_bounds("h1")
-
-        element_bounds = {}
-
-        if h1_bounds is not None:
-            element_bounds["h1"] = h1_bounds
-
-        audit_result = BrowserAuditResult(
-            job_id=job_id,
-            target_url=str(event.target_url),
-            viewport="desktop",
-            screenshot_path=screenshot_path,
-            dom_snapshot=dom_snapshot,
-            element_bounds=element_bounds,
-        )
-
-        print(
-            f"[OmniSight] Audit job {audit_result.job_id} "
-            f"completed browser capture. "
-            f"DOM size: {audit_result.dom_size} characters"
-        )
-
-        print(
-            f"[OmniSight] Screenshot saved: "
-            f"{audit_result.screenshot_path}"
-        )
-
-        visual_service = VisualAuditService(
-            RuleBasedVLMProvider()
-        )
-
-        visual_input = visual_service.prepare_input(
-            audit_result
-        )
-
-        visual_result = await visual_service.audit(
-            visual_input
-        )
-
-        result_store.save(
-            audit_result,
-            visual_result,
-        )
-
-        print(
-            f"[OmniSight] Visual audit completed. "
-            f"Defects detected: {visual_result.defect_count}"
-        )
-
-        for defect in visual_result.defects:
+        try:
             print(
-                f"[OmniSight] Defect: "
-                f"{defect.defect_type} | "
-                f"{defect.element_selector} | "
-                f"{defect.description}"
+                f"[OmniSight] Starting {viewport_name} audit "
+                f"for job {job_id}"
             )
 
-    except Exception as exc:
-        print(
-            f"[OmniSight] Audit job {job_id} failed: "
-            f"{type(exc).__name__}: {exc}"
-        )
+            await manager.start(
+                viewport=viewport_name
+            )
 
-    finally:
-        await manager.stop()
+            await manager.navigate(
+                str(event.target_url)
+            )
+
+            screenshot_path = (
+                Path("artifacts")
+                / f"{job_id}-{viewport_name}.png"
+            )
+
+            await manager.screenshot(
+                screenshot_path,
+                full_page=True,
+            )
+
+            dom_snapshot = (
+                await manager.get_dom_snapshot()
+            )
+
+            h1_bounds = (
+                await manager.get_element_bounds("h1")
+            )
+
+            element_bounds = {}
+
+            if h1_bounds is not None:
+                element_bounds["h1"] = h1_bounds
+
+            audit_result = BrowserAuditResult(
+                job_id=job_id,
+                target_url=str(event.target_url),
+                viewport=viewport_name,
+                screenshot_path=screenshot_path,
+                dom_snapshot=dom_snapshot,
+                element_bounds=element_bounds,
+            )
+
+            print(
+                f"[OmniSight] {viewport_name} browser capture "
+                f"completed. "
+                f"DOM size: {audit_result.dom_size} characters"
+            )
+
+            print(
+                f"[OmniSight] Screenshot saved: "
+                f"{audit_result.screenshot_path}"
+            )
+
+            visual_input = (
+                visual_service.prepare_input(
+                    audit_result
+                )
+            )
+
+            visual_result = await visual_service.audit(
+                visual_input
+            )
+
+            result_store.save(
+                audit_result,
+                visual_result,
+            )
+
+            print(
+                f"[OmniSight] {viewport_name} visual audit "
+                f"completed. "
+                f"Defects detected: "
+                f"{visual_result.defect_count}"
+            )
+
+            for defect in visual_result.defects:
+                print(
+                    f"[OmniSight] Defect: "
+                    f"{defect.defect_type} | "
+                    f"{defect.element_selector} | "
+                    f"{defect.description}"
+                )
+
+        except Exception as exc:
+            print(
+                f"[OmniSight] {viewport_name} audit failed "
+                f"for job {job_id}: "
+                f"{type(exc).__name__}: {exc}"
+            )
+
+        finally:
+            await manager.stop()
+
+    print(
+        f"[OmniSight] Responsive audit job "
+        f"{job_id} completed."
+    )
 
 
 @router.post(
@@ -120,9 +148,12 @@ async def receive_build_event(
     """
     Receive a CI/CD build event and schedule an asynchronous audit.
     """
+
     job_id = str(uuid4())
 
-    print(f"[OmniSight] Scheduling audit job {job_id}")
+    print(
+        f"[OmniSight] Scheduling audit job {job_id}"
+    )
 
     background_tasks.add_task(
         run_audit_job,
@@ -133,5 +164,8 @@ async def receive_build_event(
     return {
         "job_id": job_id,
         "status": "accepted",
-        "message": "Build event accepted and audit scheduled.",
+        "message": (
+            "Build event accepted and responsive "
+            "audit scheduled."
+        ),
     }
