@@ -232,3 +232,5 @@ artifacts/
 # IDE
 .vscode/
 .idea/
+
+node_modules/
