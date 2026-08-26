@@ -122,7 +122,15 @@ function Dashboard() {
         {/* Statistics */}
         <div className="stats-grid">
           <article className="stat-card">
-            <span className="stat-label">Total Builds</span>
+            <div className="stat-card-top">
+              <div className="stat-icon" aria-hidden="true">
+                ▦
+              </div>
+
+              <span className="stat-label">
+                Total Builds
+              </span>
+            </div>
 
             <strong className="stat-value">
               {stats.totalBuilds}
@@ -134,7 +142,15 @@ function Dashboard() {
           </article>
 
           <article className="stat-card">
-            <span className="stat-label">UI Issues</span>
+            <div className="stat-card-top">
+              <div className="stat-icon" aria-hidden="true">
+                !
+              </div>
+
+              <span className="stat-label">
+                UI Issues
+              </span>
+            </div>
 
             <strong className="stat-value">
               {stats.uiIssues}
@@ -146,7 +162,15 @@ function Dashboard() {
           </article>
 
           <article className="stat-card">
-            <span className="stat-label">Screenshots</span>
+            <div className="stat-card-top">
+              <div className="stat-icon" aria-hidden="true">
+                ▣
+              </div>
+
+              <span className="stat-label">
+                Screenshots
+              </span>
+            </div>
 
             <strong className="stat-value">
               {stats.totalScreenshots}
@@ -173,7 +197,9 @@ function Dashboard() {
               <p>
                 {build.deployment || "No target URL available"}{" "}
                 •{" "}
-                {build.viewport || build.time || "No viewport available"}
+                {build.viewport ||
+                  build.time ||
+                  "No viewport available"}
               </p>
             </div>
 
