@@ -4,6 +4,7 @@ from uuid import uuid4
 from fastapi import APIRouter, BackgroundTasks, status
 
 from app.browser.navigator import BrowserManager
+from app.core.config import get_settings
 from app.models.audit import BrowserAuditResult
 from app.models.jobs import BuildEvent
 from app.services.providers.rule_based_vlm import RuleBasedVLMProvider
@@ -27,9 +28,19 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
         f"for {event.repository}@{event.commit_sha}"
     )
 
-    visual_service = VisualAuditService(
-        RuleBasedVLMProvider()
-    )
+    settings = get_settings()
+
+    if settings.vlm_provider == "ollama":
+        from app.services.providers.ollama_vlm import OllamaVLMProvider
+
+        provider = OllamaVLMProvider(
+            base_url=settings.ollama_base_url,
+            model=settings.ollama_model,
+        )
+    else:
+        provider = RuleBasedVLMProvider()
+
+    visual_service = VisualAuditService(provider)
 
     for viewport_name in BrowserManager.VIEWPORTS:
         manager = BrowserManager(headless=True)
