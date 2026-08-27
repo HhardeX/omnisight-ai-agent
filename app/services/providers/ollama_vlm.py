@@ -89,7 +89,7 @@ If there are no obvious visual defects, return:
             "format": "json",
         }
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=180.0) as client:
             response = await client.post(
                 f"{self.base_url}/api/generate",
                 json=payload,
