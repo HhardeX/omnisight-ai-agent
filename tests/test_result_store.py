@@ -75,19 +75,21 @@ def test_get_all_results_returns_saved_results() -> None:
         browser_result_1,
         browser_result_2,
     ]
+
     assert store.get_all_visual_results() == [
         visual_result_1,
         visual_result_2,
     ]
 
 
-def test_save_replaces_results_with_same_job_id() -> None:
+def test_save_replaces_results_with_same_job_id_and_viewport() -> None:
     store = AuditResultStore()
 
     first_browser_result = make_browser_result(
         "job-1",
         "https://first.example.com",
     )
+
     second_browser_result = make_browser_result(
         "job-1",
         "https://second.example.com",
@@ -97,15 +99,82 @@ def test_save_replaces_results_with_same_job_id() -> None:
         "job-1",
         "https://first.example.com",
     )
+
     second_visual_result = make_visual_result(
         "job-1",
         "https://second.example.com",
     )
 
-    store.save(first_browser_result, first_visual_result)
-    store.save(second_browser_result, second_visual_result)
+    store.save(
+        first_browser_result,
+        first_visual_result,
+    )
+
+    store.save(
+        second_browser_result,
+        second_visual_result,
+    )
 
     assert store.get_browser_result("job-1") == second_browser_result
     assert store.get_visual_result("job-1") == second_visual_result
-    assert store.get_all_browser_results() == [second_browser_result]
-    assert store.get_all_visual_results() == [second_visual_result]
+
+    assert store.get_all_browser_results() == [
+        second_browser_result,
+    ]
+
+    assert store.get_all_visual_results() == [
+        second_visual_result,
+    ]
+
+
+def test_save_keeps_multiple_viewports_for_same_job() -> None:
+    store = AuditResultStore()
+
+    mobile_browser = BrowserAuditResult(
+        job_id="job-1",
+        target_url="https://example.com",
+        viewport="mobile",
+        screenshot_path=Path("artifacts/job-1-mobile.png"),
+        dom_snapshot="<html></html>",
+    )
+
+    tablet_browser = BrowserAuditResult(
+        job_id="job-1",
+        target_url="https://example.com",
+        viewport="tablet",
+        screenshot_path=Path("artifacts/job-1-tablet.png"),
+        dom_snapshot="<html></html>",
+    )
+
+    desktop_browser = BrowserAuditResult(
+        job_id="job-1",
+        target_url="https://example.com",
+        viewport="desktop",
+        screenshot_path=Path("artifacts/job-1-desktop.png"),
+        dom_snapshot="<html></html>",
+    )
+
+    store.save(
+        mobile_browser,
+        make_visual_result("job-1"),
+    )
+
+    store.save(
+        tablet_browser,
+        make_visual_result("job-1"),
+    )
+
+    store.save(
+        desktop_browser,
+        make_visual_result("job-1"),
+    )
+
+    results = store.get_all_browser_results()
+
+    assert len(results) == 3
+
+    assert [result.viewport for result in results] == [
+        "mobile",
+        "tablet",
+        "desktop",
+    ]
