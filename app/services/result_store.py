@@ -14,14 +14,23 @@ class AuditResultStore:
         browser_result: BrowserAuditResult,
         visual_result: VisualAuditResponse,
     ) -> None:
-        self._browser_results[browser_result.job_id] = browser_result
-        self._visual_results[visual_result.job_id] = visual_result
+        browser_key = f"{browser_result.job_id}-{browser_result.viewport}"
+        visual_key = f"{visual_result.job_id}-{browser_result.viewport}"
+
+        self._browser_results[browser_key] = browser_result
+        self._visual_results[visual_key] = visual_result
 
     def get_browser_result(self, job_id: str) -> BrowserAuditResult | None:
-        return self._browser_results.get(job_id)
+        for result in self._browser_results.values():
+            if result.job_id == job_id:
+                return result
+        return None
 
     def get_visual_result(self, job_id: str) -> VisualAuditResponse | None:
-        return self._visual_results.get(job_id)
+        for result in self._visual_results.values():
+            if result.job_id == job_id:
+                return result
+        return None
 
     def get_all_browser_results(self) -> list[BrowserAuditResult]:
         return list(self._browser_results.values())

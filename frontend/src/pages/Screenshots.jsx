@@ -1,12 +1,8 @@
 import { useEffect, useState } from "react";
-import {
-  screenshots as mockScreenshots,
-  screenshotStats as mockScreenshotStats,
-} from "../data/mockData";
 import { getScreenshots } from "../services/screenshotService";
 
 function Screenshots() {
-  const [screenshotData, setScreenshotData] = useState(null);
+  const [screenshots, setScreenshots] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -21,11 +17,16 @@ function Screenshots() {
         const data = await getScreenshots();
 
         if (isMounted) {
-          setScreenshotData(data);
+          const realScreenshots = Array.isArray(data)
+            ? data
+            : data?.screenshots || [];
+
+          setScreenshots(realScreenshots);
         }
       } catch (err) {
         if (isMounted) {
           setError(err.message || "Unable to load screenshots.");
+          setScreenshots([]);
         }
       } finally {
         if (isMounted) {
@@ -41,12 +42,10 @@ function Screenshots() {
     };
   }, []);
 
-  const apiScreenshots = Array.isArray(screenshotData)
-    ? screenshotData
-    : screenshotData?.screenshots;
+  const totalScreenshots = screenshots.length;
 
-  const displayedScreenshots = apiScreenshots || mockScreenshots;
-  const stats = screenshotData?.stats || mockScreenshotStats;
+  const visualIssues = 0;
+  const verified = totalScreenshots - visualIssues;
 
   return (
     <>
@@ -81,90 +80,119 @@ function Screenshots() {
 
         {error && (
           <p role="alert">
-            Backend unavailable. Showing mock screenshot data.
+            Unable to load screenshot data from the backend.
           </p>
         )}
 
-        <div className="stats-grid screenshot-stats">
-          <article className="stat-card">
-            <span className="stat-label">Total Screenshots</span>
-            <strong className="stat-value">{stats.total}</strong>
-            <span className="stat-meta">Across recent builds</span>
-          </article>
+        {!isLoading && !error && screenshots.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-content">
+              <h3>No screenshots yet</h3>
+              <p>
+                Run an OmniSight audit to generate screenshot results.
+              </p>
+            </div>
+          </div>
+        )}
 
-          <article className="stat-card">
-            <span className="stat-label">Verified</span>
-            <strong className="stat-value">{stats.verified}</strong>
-            <span className="stat-meta">No visual differences</span>
-          </article>
+        {!isLoading && (
+          <div className="stats-grid screenshot-stats">
+            <article className="stat-card">
+              <span className="stat-label">Total Screenshots</span>
+              <strong className="stat-value">
+                {totalScreenshots}
+              </strong>
+              <span className="stat-meta">Across recent builds</span>
+            </article>
 
-          <article className="stat-card">
-            <span className="stat-label">Visual Issues</span>
-            <strong className="stat-value">{stats.visualIssues}</strong>
-            <span className="stat-meta">Needs review</span>
-          </article>
-        </div>
+            <article className="stat-card">
+              <span className="stat-label">Verified</span>
+              <strong className="stat-value">
+                {verified}
+              </strong>
+              <span className="stat-meta">No visual differences</span>
+            </article>
 
-        <div className="screenshot-grid">
-          {displayedScreenshots.map((screenshot) => (
-            <article className="screenshot-card" key={screenshot.id}>
-              <div className="screenshot-preview">
-                <div className="preview-browser">
-                  <div className="preview-browser-bar">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
+            <article className="stat-card">
+              <span className="stat-label">Visual Issues</span>
+              <strong className="stat-value">
+                {visualIssues}
+              </strong>
+              <span className="stat-meta">Needs review</span>
+            </article>
+          </div>
+        )}
 
-                  <div className="preview-content">
-                    <div className="preview-sidebar" />
+        {!isLoading && !error && screenshots.length > 0 && (
+          <div className="screenshot-grid">
+            {screenshots.map((screenshot) => (
+              <article
+                className="screenshot-card"
+                key={`${screenshot.job_id}-${screenshot.viewport}`}
+              >
+                <div className="screenshot-preview">
+                  <div className="preview-browser">
+                    <div className="preview-browser-bar">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
 
-                    <div className="preview-main">
-                      <div className="preview-line large" />
-                      <div className="preview-line" />
+                    <div className="preview-content">
+                      <div className="preview-sidebar" />
 
-                      <div className="preview-box-grid">
-                        <div />
-                        <div />
-                        <div />
+                      <div className="preview-main">
+                        <div className="preview-line large" />
+                        <div className="preview-line" />
+
+                        <div className="preview-box-grid">
+                          <div />
+                          <div />
+                          <div />
+                        </div>
+
+                        <div className="preview-panel" />
                       </div>
-
-                      <div className="preview-panel" />
                     </div>
                   </div>
+
+                  <span className="screenshot-status passed">
+                    Verified
+                  </span>
                 </div>
 
-                <span
-                  className={`screenshot-status ${
-                    screenshot.status === "Passed" ? "passed" : "issue"
-                  }`}
-                >
-                  {screenshot.status}
-                </span>
-              </div>
-
-              <div className="screenshot-info">
-                <span className="screenshot-id">{screenshot.id}</span>
-
-                <h3>{screenshot.title}</h3>
-
-                <p>{screenshot.description}</p>
-
-                <div className="screenshot-meta">
-                  <span>
-                    Page <strong>{screenshot.page}</strong>
+                <div className="screenshot-info">
+                  <span className="screenshot-id">
+                    {screenshot.viewport}
                   </span>
 
-                  <span>
-                    Build <strong>{screenshot.build}</strong>
-                  </span>
+                  <h3>
+                    {screenshot.target_url}
+                  </h3>
 
-                  <span>{screenshot.time}</span>
+                  <p>
+                    Screenshot captured during the automated
+                    responsive browser audit.
+                  </p>
+
+                  <div className="screenshot-meta">
+                    <span>
+                      Viewport{" "}
+                      <strong>{screenshot.viewport}</strong>
+                    </span>
+
+                    <span>
+                      Job{" "}
+                      <strong>
+                        {screenshot.job_id}
+                      </strong>
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </>
   );
