@@ -1,3 +1,4 @@
+
 import base64
 import json
 from pathlib import Path
@@ -19,9 +20,11 @@ class OllamaVLMProvider(VLMProvider):
         self,
         base_url: str = "http://127.0.0.1:11434",
         model: str = "qwen2.5vl:3b",
+        timeout: float = 900.0,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
+        self.timeout = timeout
 
     async def analyze(
         self,
@@ -62,23 +65,28 @@ Identify visible UI defects such as:
 - visual rendering problems
 - missing important elements
 
-Return ONLY valid JSON in this format:
+Return ONLY valid JSON in exactly this structure:
 
 {{
   "defects": [
     {{
-      "element_selector": "string",
-      "defect_type": "string",
-      "description": "string",
-      "suggested_css": "string or null",
+      "element_selector": "actual CSS selector or DOM element",
+      "defect_type": "actual defect category",
+      "description": "specific explanation of the visible defect",
+      "suggested_css": "specific CSS fix or null",
       "confidence_score": 0.0
     }}
   ]
 }}
 
-If there are no obvious visual defects, return:
-
-{{"defects": []}}
+IMPORTANT:
+- Do NOT return placeholder values such as "string", "actual CSS selector or DOM element", or "actual defect category".
+- Do NOT invent a defect merely to fill the schema.
+- Only report defects that are visibly supported by the screenshot.
+- Use the DOM snapshot to help identify the actual element selector.
+- If no real visible defect can be identified, return exactly:
+{{"defects":[]}}
+- confidence_score must be between 0.0 and 1.0.
 """
 
         payload = {
@@ -89,15 +97,44 @@ If there are no obvious visual defects, return:
             "format": "json",
         }
 
-        async with httpx.AsyncClient(timeout=180.0) as client:
-            response = await client.post(
-                f"{self.base_url}/api/generate",
-                json=payload,
+        print(
+            f"[OmniSight] Starting VLM analysis "
+            f"for {audit_input.viewport} "
+            f"using {self.model}"
+        )
+
+        timeout = httpx.Timeout(
+            connect=30.0,
+            read=self.timeout,
+            write=60.0,
+            pool=30.0,
+        )
+
+        try:
+            async with httpx.AsyncClient(
+                timeout=timeout
+            ) as client:
+                response = await client.post(
+                    f"{self.base_url}/api/generate",
+                    json=payload,
+                )
+
+                response.raise_for_status()
+
+                data = response.json()
+
+        except httpx.ReadTimeout as exc:
+            print(
+                f"[OmniSight] Ollama VLM read timeout "
+                f"for {audit_input.viewport} "
+                f"after {self.timeout} seconds"
             )
+            raise exc
 
-            response.raise_for_status()
-
-            data = response.json()
+        print(
+            f"[OmniSight] VLM analysis completed "
+            f"for {audit_input.viewport}"
+        )
 
         return self._parse_response(
             audit_input,
@@ -120,30 +157,58 @@ If there are no obvious visual defects, return:
 
         defects: list[VisualDefect] = []
 
+        placeholder_values = {
+            "string",
+            "actual css selector or dom element",
+            "actual defect category",
+            "specific explanation of the visible defect",
+            "specific css fix or null",
+        }
+
         for defect in parsed.get("defects", []):
+            element_selector = defect.get(
+                "element_selector",
+                "unknown",
+            )
+            defect_type = defect.get(
+                "defect_type",
+                "visual_issue",
+            )
+            description = defect.get(
+                "description",
+                "Visual defect detected.",
+            )
+
+            normalized_values = {
+                str(element_selector).strip().lower(),
+                str(defect_type).strip().lower(),
+                str(description).strip().lower(),
+            }
+
+            if normalized_values & placeholder_values:
+                continue
+
+            confidence_score = float(
+                defect.get(
+                    "confidence_score",
+                    0.5,
+                )
+            )
+
+            confidence_score = max(
+                0.0,
+                min(1.0, confidence_score),
+            )
+
             defects.append(
                 VisualDefect(
-                    element_selector=defect.get(
-                        "element_selector",
-                        "unknown",
-                    ),
-                    defect_type=defect.get(
-                        "defect_type",
-                        "visual_issue",
-                    ),
-                    description=defect.get(
-                        "description",
-                        "Visual defect detected.",
-                    ),
+                    element_selector=element_selector,
+                    defect_type=defect_type,
+                    description=description,
                     suggested_css=defect.get(
                         "suggested_css"
                     ),
-                    confidence_score=float(
-                        defect.get(
-                            "confidence_score",
-                            0.5,
-                        )
-                    ),
+                    confidence_score=confidence_score,
                     bounding_box=None,
                 )
             )
@@ -154,3 +219,4 @@ If there are no obvious visual defects, return:
             viewport=audit_input.viewport,
             defects=defects,
         )
+

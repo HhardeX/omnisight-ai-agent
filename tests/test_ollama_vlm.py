@@ -72,3 +72,30 @@ def test_ollama_provider_handles_invalid_json() -> None:
 
     assert result.job_id == "vlm-test-001"
     assert result.defect_count == 0
+
+def test_ollama_provider_ignores_placeholder_defect() -> None:
+    provider = OllamaVLMProvider()
+
+    audit_input = make_input("artifacts/example-desktop.png")
+
+    response_text = json.dumps(
+        {
+            "defects": [
+                {
+                    "element_selector": "string",
+                    "defect_type": "string",
+                    "description": "string",
+                    "suggested_css": "string or null",
+                    "confidence_score": 0.0,
+                }
+            ]
+        }
+    )
+
+    result = provider._parse_response(
+        audit_input,
+        response_text,
+    )
+
+    assert result.job_id == "vlm-test-001"
+    assert result.defect_count == 0

@@ -207,3 +207,4 @@ async def test_get_dashboard_returns_empty_summary_when_store_is_empty() -> None
         "total_screenshots": 0,
         "latest_build": None,
     }
+    
