@@ -17,6 +17,83 @@ router = APIRouter(
     tags=["webhook"],
 )
 
+async def attempt_visual_repair(
+    manager: BrowserManager,
+    visual_service: VisualAuditService,
+    audit_result: BrowserAuditResult,
+    visual_result,
+    repair_attempt: int = 1,
+) -> tuple[BrowserAuditResult, object]:
+    """
+    Apply the first VLM-generated CSS fix and re-run the visual audit.
+    """
+
+    if visual_result.defect_count == 0:
+        return audit_result, visual_result
+
+    defect = visual_result.defects[0]
+
+    if not defect.suggested_css:
+        print(
+            f"[OmniSight] No CSS repair available for "
+            f"{defect.element_selector}"
+        )
+        return audit_result, visual_result
+
+    print(
+        f"[OmniSight] Applying repair attempt {repair_attempt} "
+        f"for {defect.element_selector}: "
+        f"{defect.suggested_css}"
+    )
+
+    await manager.apply_css(
+        defect.suggested_css
+    )
+
+    repaired_screenshot_path = (
+        Path("artifacts")
+        / (
+            f"{audit_result.job_id}-"
+            f"{audit_result.viewport}-"
+            f"repair-{repair_attempt}.png"
+        )
+    )
+
+    await manager.screenshot(
+        repaired_screenshot_path,
+        full_page=True,
+    )
+
+    repaired_dom_snapshot = (
+        await manager.get_dom_snapshot()
+    )
+
+    repaired_audit_result = BrowserAuditResult(
+        job_id=audit_result.job_id,
+        target_url=audit_result.target_url,
+        viewport=audit_result.viewport,
+        screenshot_path=repaired_screenshot_path,
+        dom_snapshot=repaired_dom_snapshot,
+        element_bounds=audit_result.element_bounds,
+    )
+
+    repaired_visual_input = (
+        visual_service.prepare_input(
+            repaired_audit_result
+        )
+    )
+
+    repaired_visual_result = (
+        await visual_service.audit(
+            repaired_visual_input
+        )
+    )
+
+    return (
+        repaired_audit_result,
+        repaired_visual_result,
+    )
+
 
 async def run_audit_job(job_id: str, event: BuildEvent) -> None:
     """
