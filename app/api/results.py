@@ -55,17 +55,45 @@ async def get_issues() -> list[dict]:
 
 @router.get("/screenshots")
 async def get_screenshots() -> list[dict]:
-    results = result_store.get_all_browser_results()
+    browser_results = result_store.get_all_browser_results()
+    visual_results = result_store.get_all_visual_results()
 
-    return [
-        {
-            "job_id": result.job_id,
-            "target_url": result.target_url,
-            "viewport": result.viewport,
-            "screenshot_path": str(result.screenshot_path),
-        }
-        for result in results
-    ]
+    # Match every visual audit result to its browser screenshot
+    # using the same job ID and viewport.
+    visual_lookup = {
+        f"{result.job_id}-{result.viewport}": result
+        for result in visual_results
+    }
+
+    screenshots = []
+
+    for result in browser_results:
+        visual_result = visual_lookup.get(
+            f"{result.job_id}-{result.viewport}"
+        )
+
+        defect_count = (
+            visual_result.defect_count
+            if visual_result is not None
+            else 0
+        )
+
+        screenshots.append(
+            {
+                "job_id": result.job_id,
+                "target_url": result.target_url,
+                "viewport": result.viewport,
+                "screenshot_path": str(result.screenshot_path),
+                "defect_count": defect_count,
+                "status": (
+                    "Issues Found"
+                    if defect_count > 0
+                    else "Verified"
+                ),
+            }
+        )
+
+    return screenshots
 
 
 @router.get("/dashboard")

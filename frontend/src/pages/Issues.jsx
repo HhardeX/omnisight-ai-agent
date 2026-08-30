@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { issues as mockIssues, issueStats as mockIssueStats } from "../data/mockData";
 import { getIssues } from "../services/issueService";
 
 function Issues() {
-  const [issueData, setIssueData] = useState(null);
+  const [issues, setIssues] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -18,11 +17,14 @@ function Issues() {
         const data = await getIssues();
 
         if (isMounted) {
-          setIssueData(data);
+          const realIssues = Array.isArray(data) ? data : data?.issues || [];
+
+          setIssues(realIssues);
         }
       } catch (err) {
         if (isMounted) {
-          setError(err.message || "Unable to load issues");
+          setError(err.message || "Unable to load issues.");
+          setIssues([]);
         }
       } finally {
         if (isMounted) {
@@ -38,12 +40,11 @@ function Issues() {
     };
   }, []);
 
-  const apiIssues = Array.isArray(issueData)
-    ? issueData
-    : issueData?.issues;
-
-  const displayedIssues = apiIssues || mockIssues;
-  const stats = issueData?.stats || mockIssueStats;
+  const totalIssues = issues.length;
+  const openIssues = issues.filter((issue) => issue.status === "Open").length;
+  const resolvedIssues = issues.filter(
+    (issue) => issue.status === "Resolved",
+  ).length;
 
   return (
     <>
@@ -53,10 +54,7 @@ function Issues() {
           <p>Review and monitor detected UI issues.</p>
         </div>
 
-        <div
-          className="environment"
-          aria-label="Current environment: Staging"
-        >
+        <div className="environment" aria-label="Current environment: Staging">
           <span className="status-dot" aria-hidden="true" />
           <span>Staging</span>
         </div>
@@ -70,94 +68,104 @@ function Issues() {
           </div>
         </div>
 
-        {isLoading && (
-          <p role="status">
-            Loading issues...
-          </p>
-        )}
+        {isLoading && <p role="status">Loading issues...</p>}
 
         {error && (
-          <p role="alert">
-            Backend unavailable. Showing mock issue data.
-          </p>
+          <p role="alert">Unable to load issue data from the backend.</p>
         )}
 
-        <div className="stats-grid issues-stats">
-          <article className="stat-card">
-            <span className="stat-label">Total Issues</span>
-            <strong className="stat-value">{stats.total}</strong>
-            <span className="stat-meta">Detected recently</span>
-          </article>
-
-          <article className="stat-card">
-            <span className="stat-label">Open Issues</span>
-            <strong className="stat-value">{stats.open}</strong>
-            <span className="stat-meta">Needs attention</span>
-          </article>
-
-          <article className="stat-card">
-            <span className="stat-label">Resolved</span>
-            <strong className="stat-value">{stats.resolved}</strong>
-            <span className="stat-meta">Successfully fixed</span>
-          </article>
-        </div>
-
-        <div className="issue-list">
-          {displayedIssues.map((issue) => (
-            <article className="issue-card" key={issue.id}>
-              <div className="issue-card-main">
-                <div className="issue-card-header">
-                  <div>
-                    <span className="issue-id">{issue.id}</span>
-                    <h3>{issue.title}</h3>
-                  </div>
-
-                  <div className="issue-badges">
-                    <span
-                      className={`status-badge ${
-                        issue.severity === "High"
-                          ? "error"
-                          : issue.severity === "Medium"
-                            ? "warning"
-                            : "neutral"
-                      }`}
-                    >
-                      {issue.severity}
-                    </span>
-
-                    <span
-                      className={`status-badge ${
-                        issue.status === "Open"
-                          ? "warning"
-                          : "success"
-                      }`}
-                    >
-                      {issue.status}
-                    </span>
-                  </div>
-                </div>
-
-                <p className="issue-description">
-                  {issue.description}
-                </p>
-
-                <div className="issue-meta">
-                  <span>
-                    Page <strong>{issue.page}</strong>
-                  </span>
-
-                  <span>
-                    Build <strong>{issue.build}</strong>
-                  </span>
-
-                  <span>
-                    Detected <strong>{issue.detected}</strong>
-                  </span>
-                </div>
-              </div>
+        {!isLoading && (
+          <div className="stats-grid issues-stats">
+            <article className="stat-card">
+              <span className="stat-label">Total Issues</span>
+              <strong className="stat-value">{totalIssues}</strong>
+              <span className="stat-meta">Detected by automated audits</span>
             </article>
-          ))}
-        </div>
+
+            <article className="stat-card">
+              <span className="stat-label">Open Issues</span>
+              <strong className="stat-value">{openIssues}</strong>
+              <span className="stat-meta">Needs attention</span>
+            </article>
+
+            <article className="stat-card">
+              <span className="stat-label">Resolved</span>
+              <strong className="stat-value">{resolvedIssues}</strong>
+              <span className="stat-meta">Successfully fixed</span>
+            </article>
+          </div>
+        )}
+
+        {!isLoading && !error && issues.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-content">
+              <h3>No issues detected</h3>
+              <p>
+                OmniSight has not detected any visual UI issues in the available
+                audit results.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!isLoading && !error && issues.length > 0 && (
+          <div className="issue-list">
+            {issues.map((issue, index) => (
+              <article
+                className="issue-card"
+                key={`${issue.job_id}-${issue.viewport}-${issue.element_selector}-${index}`}
+              >
+                <div className="issue-card-main">
+                  <div className="issue-card-header">
+                    <div>
+                      <span className="issue-id">{issue.defect_type}</span>
+
+                      <h3>{issue.element_selector}</h3>
+                    </div>
+
+                    <div className="issue-badges">
+                      <span
+                        className={`status-badge ${
+                          issue.confidence_score >= 0.8
+                            ? "error"
+                            : issue.confidence_score >= 0.5
+                              ? "warning"
+                              : "neutral"
+                        }`}
+                      >
+                        Confidence {Math.round(issue.confidence_score * 100)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="issue-description">{issue.description}</p>
+
+                  <div className="issue-meta">
+                    <span>
+                      Viewport <strong>{issue.viewport}</strong>
+                    </span>
+
+                    <span>
+                      Job <strong>{issue.job_id}</strong>
+                    </span>
+
+                    <span>
+                      Page <strong>{issue.target_url}</strong>
+                    </span>
+                  </div>
+
+                  {issue.suggested_css && (
+                    <div className="issue-meta">
+                      <span>
+                        Suggested CSS <strong>{issue.suggested_css}</strong>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </>
   );
