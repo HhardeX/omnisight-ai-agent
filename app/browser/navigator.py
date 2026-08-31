@@ -149,23 +149,23 @@ class BrowserManager:
             "width": box["width"],
             "height": box["height"],
         }
-        async def apply_css(self, css: str) -> None:
-            """Inject temporary CSS into the active page."""
 
-            if self._page is None:
-                raise RuntimeError(
-                    "BrowserManager has not been started."
-                )
+    async def apply_css(self, css: str) -> None:
+        """Inject temporary CSS into the active page."""
 
-            if not css.strip():
-                raise ValueError(
-                    "CSS cannot be empty."
-                )
-
-            await self._page.add_style_tag(
-                content=css
+        if self._page is None:
+            raise RuntimeError(
+                "BrowserManager has not been started."
             )
-        
+
+        if not css.strip():
+            raise ValueError(
+                "CSS cannot be empty."
+            )
+
+        await self._page.add_style_tag(
+            content=css
+        )
 
     async def stop(self) -> None:
         """Safely close the browser and Playwright."""

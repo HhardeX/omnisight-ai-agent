@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     vlm_provider: str = "rule_based"
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen2.5vl:3b"
+    github_token: str = ""
+    github_repository: str = ""
+    github_base_branch: str = "main"
 
 
 @lru_cache

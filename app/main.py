@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.repair import router as repair_router
+
 
 from app.api.webhook import router as webhook_router
 from app.api.results import router as results_router
@@ -25,6 +27,7 @@ app.add_middleware(
 
 app.include_router(webhook_router)
 app.include_router(results_router)
+app.include_router(repair_router)
 
 
 @app.get("/health")
