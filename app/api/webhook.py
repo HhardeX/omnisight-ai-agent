@@ -46,9 +46,7 @@ async def attempt_visual_repair(
         f"{defect.suggested_css}"
     )
 
-    await manager.apply_css(
-        defect.suggested_css
-    )
+    await manager.apply_css(defect.suggested_css)
 
     repaired_screenshot_path = (
         Path("artifacts")
@@ -77,23 +75,18 @@ async def attempt_visual_repair(
         element_bounds=audit_result.element_bounds,
     )
 
-    repaired_visual_input = (
-        visual_service.prepare_input(
-            repaired_audit_result
-        )
+    repaired_visual_input = visual_service.prepare_input(
+        repaired_audit_result
     )
 
-    repaired_visual_result = (
-        await visual_service.audit(
-            repaired_visual_input
-        )
+    repaired_visual_result = await visual_service.audit(
+        repaired_visual_input
     )
 
     return (
         repaired_audit_result,
         repaired_visual_result,
     )
-
 
 async def run_audit_job(job_id: str, event: BuildEvent) -> None:
     """
@@ -189,6 +182,42 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                 visual_input
             )
 
+            print(
+                f"[OmniSight] {viewport_name} visual audit "
+                f"completed. "
+                f"Defects detected: "
+                f"{visual_result.defect_count}"
+            )
+
+            for defect in visual_result.defects:
+                print(
+                    f"[OmniSight] Defect: "
+                    f"{defect.defect_type} | "
+                    f"{defect.element_selector} | "
+                    f"{defect.description}"
+                )
+
+            if visual_result.defect_count > 0:
+                (
+                    final_audit_result,
+                    final_visual_result,
+                ) = await attempt_visual_repair(
+                    manager=manager,
+                    visual_service=visual_service,
+                    audit_result=audit_result,
+                    visual_result=visual_result,
+                    repair_attempt=1,
+                )
+
+                audit_result = final_audit_result
+                visual_result = final_visual_result
+
+                print(
+                    f"[OmniSight] {viewport_name} repair verification "
+                    f"completed. Remaining defects: "
+                    f"{visual_result.defect_count}"
+                )
+
             result_store.save(
                 audit_result,
                 visual_result,
@@ -209,12 +238,28 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                     f"{defect.description}"
                 )
 
-        except Exception as exc:
-            print(
-                f"[OmniSight] {viewport_name} audit failed "
-                f"for job {job_id}: "
-                f"{type(exc).__name__}: {exc}"
-            )
+            if visual_result.defect_count > 0:
+                (
+                    repaired_audit_result,
+                    repaired_visual_result,
+                ) = await attempt_visual_repair(
+                    manager=manager,
+                    visual_service=visual_service,
+                    audit_result=audit_result,
+                    visual_result=visual_result,
+                )
+
+                result_store.save(
+                    repaired_audit_result,
+                    repaired_visual_result,
+                )
+
+                print(
+                    f"[OmniSight] {viewport_name} repair verification "
+                    f"completed. "
+                    f"Remaining defects: "
+                    f"{repaired_visual_result.defect_count}"
+                )
 
         finally:
             await manager.stop()
