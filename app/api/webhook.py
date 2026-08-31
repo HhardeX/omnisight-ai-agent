@@ -238,28 +238,7 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                     f"{defect.description}"
                 )
 
-            if visual_result.defect_count > 0:
-                (
-                    repaired_audit_result,
-                    repaired_visual_result,
-                ) = await attempt_visual_repair(
-                    manager=manager,
-                    visual_service=visual_service,
-                    audit_result=audit_result,
-                    visual_result=visual_result,
-                )
-
-                result_store.save(
-                    repaired_audit_result,
-                    repaired_visual_result,
-                )
-
-                print(
-                    f"[OmniSight] {viewport_name} repair verification "
-                    f"completed. "
-                    f"Remaining defects: "
-                    f"{repaired_visual_result.defect_count}"
-                )
+            
 
         finally:
             await manager.stop()
