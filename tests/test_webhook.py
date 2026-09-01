@@ -1,9 +1,13 @@
 
+from pathlib import Path
+from unittest.mock import MagicMock
+
 import pytest
 from fastapi import BackgroundTasks
-from pathlib import Path
+from fastapi.testclient import TestClient
 
 from app.api import webhook
+from app.main import app
 from app.models.audit import BrowserAuditResult
 from app.models.jobs import BuildEvent
 from app.models.visual import VisualAuditResponse, VisualDefect
@@ -211,7 +215,9 @@ async def test_attempt_visual_repair_applies_css_and_reaudits() -> None:
 
     assert (
         repaired_audit_result.screenshot_path
-        == Path("artifacts/repair-job-mobile-repair-1.png")
+        == Path(
+            "artifacts/repair-job-mobile-repair-1.png"
+        )
     )
 
     assert final_result.defect_count == 0
@@ -383,7 +389,7 @@ async def test_attempt_visual_repair_skips_when_css_is_missing() -> None:
     assert manager.applied_css is False
     assert manager.screenshot_called is False
     assert visual_service.audit_called is False
-    
+
 
 @pytest.mark.asyncio
 async def test_audit_repair_loop_retries_until_success() -> None:
@@ -404,7 +410,13 @@ async def test_audit_repair_loop_retries_until_success() -> None:
             return output_path
 
         async def get_dom_snapshot(self) -> str:
-            return "<html><body><h1>Example</h1></body></html>"
+            return (
+                "<html>"
+                "<body>"
+                "<h1>Example</h1>"
+                "</body>"
+                "</html>"
+            )
 
     class FakeVisualService:
         def __init__(self) -> None:
@@ -431,9 +443,13 @@ async def test_audit_repair_loop_retries_until_success() -> None:
                         VisualDefect(
                             element_selector="h1",
                             defect_type="unreadable text",
-                            description="Heading is still difficult to read.",
+                            description=(
+                                "Heading is still difficult "
+                                "to read."
+                            ),
                             suggested_css=(
-                                f"font-size: {self.audit_count + 2}em;"
+                                f"font-size: "
+                                f"{self.audit_count + 2}em;"
                             ),
                             confidence_score=0.9,
                         )
@@ -455,7 +471,13 @@ async def test_audit_repair_loop_retries_until_success() -> None:
         target_url="https://example.com",
         viewport="mobile",
         screenshot_path="artifacts/retry-job-mobile.png",
-        dom_snapshot="<html><body><h1>Example</h1></body></html>",
+        dom_snapshot=(
+            "<html>"
+            "<body>"
+            "<h1>Example</h1>"
+            "</body>"
+            "</html>"
+        ),
     )
 
     initial_result = VisualAuditResponse(
@@ -477,7 +499,27 @@ async def test_audit_repair_loop_retries_until_success() -> None:
     current_visual_result = initial_result
     max_repair_attempts = 3
 
-    for repair_attempt in range(1, max_repair_attempts + 1):
+    attempted_repairs: set[str] = set()
+
+    for repair_attempt in range(
+        1,
+        max_repair_attempts + 1,
+    ):
+        defect = current_visual_result.defects[0]
+
+        if not defect.suggested_css:
+            break
+
+        if webhook._repair_was_already_attempted(
+            defect.suggested_css,
+            attempted_repairs,
+        ):
+            break
+
+        attempted_repairs.add(
+            defect.suggested_css.strip()
+        )
+
         (
             current_audit_result,
             current_visual_result,
@@ -505,14 +547,18 @@ async def test_audit_repair_loop_retries_until_success() -> None:
 
     assert (
         current_audit_result.screenshot_path
-        == Path("artifacts/retry-job-mobile-repair-3.png")
+        == Path(
+            "artifacts/retry-job-mobile-repair-3.png"
+        )
     )
+
 
 @pytest.mark.asyncio
 async def test_audit_repair_loop_stops_on_duplicate_css() -> None:
     class FakeManager:
         def __init__(self) -> None:
             self.applied_css: list[str] = []
+            self.screenshots: list[object] = []
 
         async def apply_css(self, css: str) -> None:
             self.applied_css.append(css)
@@ -522,10 +568,17 @@ async def test_audit_repair_loop_stops_on_duplicate_css() -> None:
             output_path: object,
             full_page: bool = True,
         ) -> object:
+            self.screenshots.append(output_path)
             return output_path
 
         async def get_dom_snapshot(self) -> str:
-            return "<html><body><h1>Example</h1></body></html>"
+            return (
+                "<html>"
+                "<body>"
+                "<h1>Example</h1>"
+                "</body>"
+                "</html>"
+            )
 
     class FakeVisualService:
         def __init__(self) -> None:
@@ -551,8 +604,13 @@ async def test_audit_repair_loop_stops_on_duplicate_css() -> None:
                     VisualDefect(
                         element_selector="h1",
                         defect_type="unreadable text",
-                        description="Heading is still difficult to read.",
-                        suggested_css="font-size: 2em; opacity: 1;",
+                        description=(
+                            "Heading is still difficult "
+                            "to read."
+                        ),
+                        suggested_css=(
+                            "font-size: 2em; opacity: 1;"
+                        ),
                         confidence_score=0.9,
                     )
                 ],
@@ -565,8 +623,16 @@ async def test_audit_repair_loop_stops_on_duplicate_css() -> None:
         job_id="duplicate-job",
         target_url="https://example.com",
         viewport="mobile",
-        screenshot_path="artifacts/duplicate-job-mobile.png",
-        dom_snapshot="<html><body><h1>Example</h1></body></html>",
+        screenshot_path=(
+            "artifacts/duplicate-job-mobile.png"
+        ),
+        dom_snapshot=(
+            "<html>"
+            "<body>"
+            "<h1>Example</h1>"
+            "</body>"
+            "</html>"
+        ),
     )
 
     visual_result = VisualAuditResponse(
@@ -578,7 +644,9 @@ async def test_audit_repair_loop_stops_on_duplicate_css() -> None:
                 element_selector="h1",
                 defect_type="unreadable text",
                 description="Heading is difficult to read.",
-                suggested_css="font-size: 2em; opacity: 1;",
+                suggested_css=(
+                    "font-size: 2em; opacity: 1;"
+                ),
                 confidence_score=0.9,
             )
         ],
@@ -587,11 +655,14 @@ async def test_audit_repair_loop_stops_on_duplicate_css() -> None:
     attempted_repairs: set[str] = set()
     max_repair_attempts = 3
 
+    current_audit_result = audit_result
+    current_visual_result = visual_result
+
     for repair_attempt in range(
         1,
         max_repair_attempts + 1,
     ):
-        defect = visual_result.defects[0]
+        defect = current_visual_result.defects[0]
 
         if not defect.suggested_css:
             break
@@ -607,13 +678,13 @@ async def test_audit_repair_loop_stops_on_duplicate_css() -> None:
         )
 
         (
-            audit_result,
-            visual_result,
+            current_audit_result,
+            current_visual_result,
         ) = await webhook.attempt_visual_repair(
             manager=manager,
             visual_service=visual_service,
-            audit_result=audit_result,
-            visual_result=visual_result,
+            audit_result=current_audit_result,
+            visual_result=current_visual_result,
             repair_attempt=repair_attempt,
         )
 
@@ -621,8 +692,42 @@ async def test_audit_repair_loop_stops_on_duplicate_css() -> None:
         "font-size: 2em; opacity: 1;"
     ]
 
+    assert len(manager.screenshots) == 1
     assert visual_service.audit_count == 1
-    assert visual_result.defect_count == 1
+    assert current_visual_result.defect_count == 1
 
 
+def test_repair_helper_detects_duplicate_css() -> None:
+    attempted_repairs: set[str] = {
+        "font-size: 2em; opacity: 1;"
+    }
+
+    assert webhook._repair_was_already_attempted(
+        "font-size: 2em; opacity: 1;",
+        attempted_repairs,
+    )
+
+    assert webhook._repair_was_already_attempted(
+        "  font-size: 2em; opacity: 1;  ",
+        attempted_repairs,
+    )
+
+    assert not webhook._repair_was_already_attempted(
+        "text-align: center;",
+        attempted_repairs,
+    )
+
+
+def test_repair_helper_detects_empty_css() -> None:
+    attempted_repairs: set[str] = set()
+
+    assert webhook._repair_was_already_attempted(
+        "",
+        attempted_repairs,
+    )
+
+    assert webhook._repair_was_already_attempted(
+        "   ",
+        attempted_repairs,
+    )
 

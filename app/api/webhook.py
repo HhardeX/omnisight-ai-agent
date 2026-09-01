@@ -218,6 +218,32 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                     1,
                     max_repair_attempts + 1,
                 ):
+                    if visual_result.defect_count == 0:
+                        break
+
+                    defect = visual_result.defects[0]
+
+                    if not defect.suggested_css:
+                        print(
+                            f"[OmniSight] {viewport_name} has no usable "
+                            f"CSS repair for {defect.element_selector}"
+                        )
+                        break
+
+                    if _repair_was_already_attempted(
+                        defect.suggested_css,
+                        attempted_repairs,
+                    ):
+                        print(
+                            f"[OmniSight] {viewport_name} already attempted "
+                            f"repair: {defect.suggested_css}"
+                        )
+                        break
+
+                    attempted_repairs.add(
+                        defect.suggested_css.strip()
+                    )
+
                     (
                         final_audit_result,
                         final_visual_result,
