@@ -198,25 +198,54 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                 )
 
             if visual_result.defect_count > 0:
-                (
-                    final_audit_result,
-                    final_visual_result,
-                ) = await attempt_visual_repair(
-                    manager=manager,
-                    visual_service=visual_service,
-                    audit_result=audit_result,
-                    visual_result=visual_result,
-                    repair_attempt=1,
-                )
+                max_repair_attempts = 3
 
-                audit_result = final_audit_result
-                visual_result = final_visual_result
+                for repair_attempt in range(
+                    1,
+                    max_repair_attempts + 1,
+                ):
+                    (
+                        final_audit_result,
+                        final_visual_result,
+                    ) = await attempt_visual_repair(
+                        manager=manager,
+                        visual_service=visual_service,
+                        audit_result=audit_result,
+                        visual_result=visual_result,
+                        repair_attempt=repair_attempt,
+                    )
 
-                print(
-                    f"[OmniSight] {viewport_name} repair verification "
-                    f"completed. Remaining defects: "
-                    f"{visual_result.defect_count}"
-                )
+                    audit_result = final_audit_result
+                    visual_result = final_visual_result
+
+                    print(
+                        f"[OmniSight] {viewport_name} repair verification "
+                        f"attempt {repair_attempt} completed. "
+                        f"Remaining defects: "
+                        f"{visual_result.defect_count}"
+                    )
+
+                    if visual_result.defect_count == 0:
+                        print(
+                            f"[OmniSight] {viewport_name} visual repair "
+                            f"verified successfully on attempt "
+                            f"{repair_attempt}."
+                        )
+                        break
+
+                    if repair_attempt < max_repair_attempts:
+                        print(
+                            f"[OmniSight] {viewport_name} repair verification "
+                            f"failed. Retrying "
+                            f"({repair_attempt + 1}/"
+                            f"{max_repair_attempts})"
+                        )
+                    else:
+                        print(
+                            f"[OmniSight] {viewport_name} reached maximum "
+                            f"repair attempts "
+                            f"({max_repair_attempts})"
+                        )
 
             result_store.save(
                 audit_result,
