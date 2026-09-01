@@ -17,6 +17,19 @@ router = APIRouter(
     tags=["webhook"],
 )
 
+def _repair_was_already_attempted(
+    suggested_css: str,
+    attempted_repairs: set[str],
+) -> bool:
+    """Return True when the exact CSS repair was already attempted."""
+
+    normalized_css = suggested_css.strip()
+
+    if not normalized_css:
+        return True
+
+    return normalized_css in attempted_repairs
+
 async def attempt_visual_repair(
     manager: BrowserManager,
     visual_service: VisualAuditService,
@@ -199,6 +212,7 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
 
             if visual_result.defect_count > 0:
                 max_repair_attempts = 3
+                attempted_repairs: set[str] = set()
 
                 for repair_attempt in range(
                     1,

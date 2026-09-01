@@ -508,4 +508,121 @@ async def test_audit_repair_loop_retries_until_success() -> None:
         == Path("artifacts/retry-job-mobile-repair-3.png")
     )
 
+@pytest.mark.asyncio
+async def test_audit_repair_loop_stops_on_duplicate_css() -> None:
+    class FakeManager:
+        def __init__(self) -> None:
+            self.applied_css: list[str] = []
+
+        async def apply_css(self, css: str) -> None:
+            self.applied_css.append(css)
+
+        async def screenshot(
+            self,
+            output_path: object,
+            full_page: bool = True,
+        ) -> object:
+            return output_path
+
+        async def get_dom_snapshot(self) -> str:
+            return "<html><body><h1>Example</h1></body></html>"
+
+    class FakeVisualService:
+        def __init__(self) -> None:
+            self.audit_count = 0
+
+        def prepare_input(
+            self,
+            audit_result: BrowserAuditResult,
+        ) -> object:
+            return audit_result
+
+        async def audit(
+            self,
+            audit_input: object,
+        ) -> VisualAuditResponse:
+            self.audit_count += 1
+
+            return VisualAuditResponse(
+                job_id="duplicate-job",
+                target_url="https://example.com",
+                viewport="mobile",
+                defects=[
+                    VisualDefect(
+                        element_selector="h1",
+                        defect_type="unreadable text",
+                        description="Heading is still difficult to read.",
+                        suggested_css="font-size: 2em; opacity: 1;",
+                        confidence_score=0.9,
+                    )
+                ],
+            )
+
+    manager = FakeManager()
+    visual_service = FakeVisualService()
+
+    audit_result = BrowserAuditResult(
+        job_id="duplicate-job",
+        target_url="https://example.com",
+        viewport="mobile",
+        screenshot_path="artifacts/duplicate-job-mobile.png",
+        dom_snapshot="<html><body><h1>Example</h1></body></html>",
+    )
+
+    visual_result = VisualAuditResponse(
+        job_id="duplicate-job",
+        target_url="https://example.com",
+        viewport="mobile",
+        defects=[
+            VisualDefect(
+                element_selector="h1",
+                defect_type="unreadable text",
+                description="Heading is difficult to read.",
+                suggested_css="font-size: 2em; opacity: 1;",
+                confidence_score=0.9,
+            )
+        ],
+    )
+
+    attempted_repairs: set[str] = set()
+    max_repair_attempts = 3
+
+    for repair_attempt in range(
+        1,
+        max_repair_attempts + 1,
+    ):
+        defect = visual_result.defects[0]
+
+        if not defect.suggested_css:
+            break
+
+        if webhook._repair_was_already_attempted(
+            defect.suggested_css,
+            attempted_repairs,
+        ):
+            break
+
+        attempted_repairs.add(
+            defect.suggested_css.strip()
+        )
+
+        (
+            audit_result,
+            visual_result,
+        ) = await webhook.attempt_visual_repair(
+            manager=manager,
+            visual_service=visual_service,
+            audit_result=audit_result,
+            visual_result=visual_result,
+            repair_attempt=repair_attempt,
+        )
+
+    assert manager.applied_css == [
+        "font-size: 2em; opacity: 1;"
+    ]
+
+    assert visual_service.audit_count == 1
+    assert visual_result.defect_count == 1
+
+
 
