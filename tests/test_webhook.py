@@ -383,4 +383,129 @@ async def test_attempt_visual_repair_skips_when_css_is_missing() -> None:
     assert manager.applied_css is False
     assert manager.screenshot_called is False
     assert visual_service.audit_called is False
+    
+
+@pytest.mark.asyncio
+async def test_audit_repair_loop_retries_until_success() -> None:
+    class FakeManager:
+        def __init__(self) -> None:
+            self.applied_css: list[str] = []
+            self.screenshots: list[object] = []
+
+        async def apply_css(self, css: str) -> None:
+            self.applied_css.append(css)
+
+        async def screenshot(
+            self,
+            output_path: object,
+            full_page: bool = True,
+        ) -> object:
+            self.screenshots.append(output_path)
+            return output_path
+
+        async def get_dom_snapshot(self) -> str:
+            return "<html><body><h1>Example</h1></body></html>"
+
+    class FakeVisualService:
+        def __init__(self) -> None:
+            self.audit_count = 0
+
+        def prepare_input(
+            self,
+            audit_result: BrowserAuditResult,
+        ) -> object:
+            return audit_result
+
+        async def audit(
+            self,
+            audit_input: object,
+        ) -> VisualAuditResponse:
+            self.audit_count += 1
+
+            if self.audit_count < 3:
+                return VisualAuditResponse(
+                    job_id="retry-job",
+                    target_url="https://example.com",
+                    viewport="mobile",
+                    defects=[
+                        VisualDefect(
+                            element_selector="h1",
+                            defect_type="unreadable text",
+                            description="Heading is still difficult to read.",
+                            suggested_css=(
+                                f"font-size: {self.audit_count + 2}em;"
+                            ),
+                            confidence_score=0.9,
+                        )
+                    ],
+                )
+
+            return VisualAuditResponse(
+                job_id="retry-job",
+                target_url="https://example.com",
+                viewport="mobile",
+                defects=[],
+            )
+
+    manager = FakeManager()
+    visual_service = FakeVisualService()
+
+    audit_result = BrowserAuditResult(
+        job_id="retry-job",
+        target_url="https://example.com",
+        viewport="mobile",
+        screenshot_path="artifacts/retry-job-mobile.png",
+        dom_snapshot="<html><body><h1>Example</h1></body></html>",
+    )
+
+    initial_result = VisualAuditResponse(
+        job_id="retry-job",
+        target_url="https://example.com",
+        viewport="mobile",
+        defects=[
+            VisualDefect(
+                element_selector="h1",
+                defect_type="unreadable text",
+                description="Heading is difficult to read.",
+                suggested_css="font-size: 2em;",
+                confidence_score=0.9,
+            )
+        ],
+    )
+
+    current_audit_result = audit_result
+    current_visual_result = initial_result
+    max_repair_attempts = 3
+
+    for repair_attempt in range(1, max_repair_attempts + 1):
+        (
+            current_audit_result,
+            current_visual_result,
+        ) = await webhook.attempt_visual_repair(
+            manager=manager,
+            visual_service=visual_service,
+            audit_result=current_audit_result,
+            visual_result=current_visual_result,
+            repair_attempt=repair_attempt,
+        )
+
+        if current_visual_result.defect_count == 0:
+            break
+
+    assert current_visual_result.defect_count == 0
+    assert visual_service.audit_count == 3
+
+    assert manager.applied_css == [
+        "font-size: 2em;",
+        "font-size: 3em;",
+        "font-size: 4em;",
+    ]
+
+    assert len(manager.screenshots) == 3
+
+    assert (
+        current_audit_result.screenshot_path
+        == Path("artifacts/retry-job-mobile-repair-3.png")
+    )
+
 
