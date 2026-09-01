@@ -136,6 +136,8 @@ async def test_get_screenshots_returns_screenshot_paths() -> None:
             "target_url": "https://example.com",
             "viewport": "desktop",
             "screenshot_path": str(Path("artifacts/job-1.png")),
+            "defect_count": 0,
+            "status": "Verified",
         }
     ]
 
