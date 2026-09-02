@@ -226,7 +226,8 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                     if not defect.suggested_css:
                         print(
                             f"[OmniSight] {viewport_name} has no usable "
-                            f"CSS repair for {defect.element_selector}"
+                            f"CSS repair for "
+                            f"{defect.element_selector}"
                         )
                         break
 
