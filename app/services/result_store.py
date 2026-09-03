@@ -1,6 +1,17 @@
+
+from dataclasses import dataclass
 from app.models.audit import BrowserAuditResult
 from app.models.visual import VisualAuditResponse
 
+@dataclass(frozen=True, slots=True)
+class PublishedRepair:
+    """Published repair metadata shown by the QA dashboard."""
+
+    job_id: str
+    viewport: str
+    branch_name: str
+    commit_sha: str
+    pull_request_url: str
 
 class AuditResultStore:
     """In-memory store for OmniSight audit results across all viewports."""
@@ -14,6 +25,11 @@ class AuditResultStore:
         self._visual_results: dict[
             tuple[str, str],
             VisualAuditResponse,
+        ] = {}
+        
+        self._published_repairs: dict[
+            tuple[str, str],
+            PublishedRepair,
         ] = {}
 
     def save(
@@ -70,6 +86,27 @@ class AuditResultStore:
         self,
     ) -> list[VisualAuditResponse]:
         return list(self._visual_results.values())
+    
+    def save_published_repair(
+        self,
+        repair: PublishedRepair,
+    ) -> None:
+        """Store a successfully published repair."""
+
+        key = (
+            repair.job_id,
+            repair.viewport,
+        )
+
+        self._published_repairs[key] = repair
+
+
+    def get_all_published_repairs(
+        self,
+    ) -> list[PublishedRepair]:
+        """Return all successfully published repairs."""
+
+        return list(self._published_repairs.values())
 
 
 result_store = AuditResultStore()

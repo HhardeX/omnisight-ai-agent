@@ -4,6 +4,7 @@ from app.core.config import get_settings
 from app.models.repair import RepairRequest, RepairResponse
 from app.services.github import GitHubService
 from app.services.repair import RepairService
+from app.services.result_store import PublishedRepair, result_store
 
 
 router = APIRouter(
@@ -60,6 +61,16 @@ async def publish_repair(
             pull_request_body=request.pull_request_body,
         )
 
+        published_repair = PublishedRepair(
+            job_id=request.job_id,
+            viewport=request.viewport,
+            branch_name=result.branch_name,
+            commit_sha=result.commit_sha,
+            pull_request_url=result.pull_request_url,
+        )
+
+        result_store.save_published_repair(published_repair)
+
         return RepairResponse(
             job_id=request.job_id,
             viewport=request.viewport,
@@ -76,3 +87,18 @@ async def publish_repair(
 
     finally:
         github_service.close()
+        
+@router.get("/pull-requests")
+async def get_pull_requests() -> list[dict]:
+    """Return successfully published repair pull requests."""
+
+    return [
+        {
+            "job_id": repair.job_id,
+            "viewport": repair.viewport,
+            "branch_name": repair.branch_name,
+            "commit_sha": repair.commit_sha,
+            "pull_request_url": repair.pull_request_url,
+        }
+        for repair in result_store.get_all_published_repairs()
+    ]

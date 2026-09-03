@@ -1,5 +1,5 @@
+
 import { useCallback, useEffect, useState } from "react";
-import { dashboardStats, latestBuild } from "../data/mockData";
 import { getDashboardData } from "../services/dashboardService";
 
 function Dashboard() {
@@ -33,30 +33,12 @@ function Dashboard() {
     loadDashboard();
   }, [loadDashboard]);
 
-  /*
-   * The backend currently provides:
-   * - total_builds
-   * - total_issues
-   * - total_screenshots
-   * - latest_build
-   *
-   * Some older dashboard fields are not available from the backend yet,
-   * so we keep their mock values until the backend exposes them.
-   */
-  const stats = dashboardData
-    ? {
-        totalBuilds: dashboardData.total_builds ?? 0,
-        passedBuilds: dashboardStats.passedBuilds,
-        successRate: dashboardStats.successRate,
-        uiIssues: dashboardData.total_issues ?? 0,
-        totalScreenshots: dashboardData.total_screenshots ?? 0,
-      }
-    : dashboardStats;
+  const stats = {
+    totalBuilds: dashboardData?.total_builds ?? 0,
+    uiIssues: dashboardData?.total_issues ?? 0,
+    totalScreenshots: dashboardData?.total_screenshots ?? 0,
+  };
 
-  /*
-   * Convert the backend latest_build response into the shape
-   * expected by the existing dashboard UI.
-   */
   const backendBuild = dashboardData?.latest_build;
 
   const build = backendBuild
@@ -68,7 +50,7 @@ function Dashboard() {
         status: "Completed",
         issues: stats.uiIssues,
       }
-    : latestBuild;
+    : null;
 
   return (
     <>
@@ -115,7 +97,7 @@ function Dashboard() {
         {/* Error State */}
         {error && (
           <p role="alert">
-            Backend unavailable. Showing available dashboard data.
+            Unable to load dashboard data from the backend.
           </p>
         )}
 
@@ -191,15 +173,15 @@ function Dashboard() {
               </span>
 
               <h3>
-                {build.id ? `Build ${build.id}` : "No builds yet"}
+                {build?.id
+                  ? `Build ${build.id}`
+                  : "No builds yet"}
               </h3>
 
               <p>
-                {build.deployment || "No target URL available"}{" "}
+                {build?.deployment || "No target URL available"}{" "}
                 •{" "}
-                {build.viewport ||
-                  build.time ||
-                  "No viewport available"}
+                {build?.viewport || "No viewport available"}
               </p>
             </div>
 
@@ -209,7 +191,9 @@ function Dashboard() {
                 aria-hidden="true"
               />
 
-              <span>{build.status || "Unknown"}</span>
+              <span>
+                {build?.status || "No build"}
+              </span>
             </div>
           </div>
 
@@ -221,23 +205,15 @@ function Dashboard() {
               <span>DOM Size</span>
 
               <strong>
-                {build.domSize ?? build.tests ?? "-"}
-              </strong>
-            </div>
-
-            <div className="build-metric success">
-              <span>Passed</span>
-
-              <strong>
-                {build.passed ?? "-"}
+                {build?.domSize ?? "-"}
               </strong>
             </div>
 
             <div className="build-metric">
-              <span>Failed</span>
+              <span>Viewport</span>
 
               <strong>
-                {build.failed ?? "-"}
+                {build?.viewport || "-"}
               </strong>
             </div>
 
@@ -245,7 +221,7 @@ function Dashboard() {
               <span>UI Issues</span>
 
               <strong>
-                {build.issues ?? 0}
+                {build?.issues ?? 0}
               </strong>
             </div>
           </div>
@@ -256,3 +232,4 @@ function Dashboard() {
 }
 
 export default Dashboard;
+

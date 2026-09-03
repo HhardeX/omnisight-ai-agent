@@ -186,3 +186,71 @@ def test_repair_api_returns_502_when_github_fails(monkeypatch) -> None:
     )
 
     github.close.assert_called_once()
+    
+def test_pull_requests_api_returns_published_repairs(monkeypatch) -> None:
+    github = MagicMock()
+
+    github.update_file.return_value = "repair-commit-sha"
+    github.create_pull_request.return_value = (
+        "https://github.com/owner/repository/pull/456"
+    )
+
+    class FakeSettings:
+        github_token = "test-token"
+        github_repository = "owner/repository"
+        github_base_branch = "main"
+
+    monkeypatch.setattr(
+        "app.api.repair.get_settings",
+        lambda: FakeSettings(),
+    )
+
+    monkeypatch.setattr(
+        "app.api.repair.GitHubService",
+        lambda **kwargs: github,
+    )
+
+    client = TestClient(app)
+
+    repair_response = client.post(
+        "/api/v1/repair",
+        json={
+            "job_id": "job-pull-request-001",
+            "viewport": "desktop",
+            "file_path": "src/Repair.css",
+            "content": ".button { margin-top: 8px; }",
+            "commit_message": "fix: OmniSight visual repair",
+            "pull_request_title": "fix: OmniSight visual repair",
+            "pull_request_body": "Automated visual repair.",
+        },
+    )
+
+    assert repair_response.status_code == 201
+
+    response = client.get("/api/v1/pull-requests")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    matching_repairs = [
+        repair
+        for repair in data
+        if repair["job_id"] == "job-pull-request-001"
+    ]
+
+    assert len(matching_repairs) == 1
+
+    repair = matching_repairs[0]
+
+    assert repair["job_id"] == "job-pull-request-001"
+    assert repair["viewport"] == "desktop"
+    assert repair["branch_name"] == (
+        "omnisight/repair-job-pull-request-001-desktop"
+    )
+    assert repair["commit_sha"] == "repair-commit-sha"
+    assert repair["pull_request_url"] == (
+        "https://github.com/owner/repository/pull/456"
+    )
+
+    github.close.assert_called_once()

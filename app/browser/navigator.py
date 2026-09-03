@@ -103,7 +103,10 @@ class BrowserManager:
             )
 
         path = Path(output_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
         await self._page.screenshot(
             path=str(path),
@@ -111,6 +114,131 @@ class BrowserManager:
         )
 
         return path
+
+    async def screenshot_roi(
+        self,
+        output_path: str | Path,
+        x: float,
+        y: float,
+        width: float,
+        height: float,
+    ) -> Path:
+        """Capture a screenshot of a specific page region."""
+
+        if self._page is None:
+            raise RuntimeError(
+                "BrowserManager has not been started."
+            )
+
+        if x < 0 or y < 0:
+            raise ValueError(
+                "ROI x and y coordinates cannot be negative."
+            )
+
+        if width <= 0 or height <= 0:
+            raise ValueError(
+                "ROI width and height must be greater than zero."
+            )
+
+        path = Path(output_path)
+        path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        await self._page.screenshot(
+            path=str(path),
+            full_page=False,
+            clip={
+                "x": x,
+                "y": y,
+                "width": width,
+                "height": height,
+            },
+        )
+
+        return path
+
+    async def screenshot_chunks(
+        self,
+        output_directory: str | Path,
+        chunk_height: int | None = None,
+        prefix: str = "chunk",
+    ) -> list[Path]:
+        """Capture a large or scrollable page as vertical screenshot chunks."""
+
+        if self._page is None:
+            raise RuntimeError(
+                "BrowserManager has not been started."
+            )
+
+        if chunk_height is not None and chunk_height <= 0:
+            raise ValueError(
+                "chunk_height must be greater than zero."
+            )
+
+        output_dir = Path(output_directory)
+        output_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        page_size = await self._page.evaluate(
+            """
+            () => ({
+                width: Math.max(
+                    document.documentElement.scrollWidth,
+                    document.body ? document.body.scrollWidth : 0
+                ),
+                height: Math.max(
+                    document.documentElement.scrollHeight,
+                    document.body ? document.body.scrollHeight : 0
+                ),
+                viewportHeight: window.innerHeight
+            })
+            """
+        )
+
+        page_width = int(page_size["width"])
+        page_height = int(page_size["height"])
+        viewport_height = int(page_size["viewportHeight"])
+
+        if page_width <= 0 or page_height <= 0:
+            raise ValueError(
+                "Unable to determine page dimensions."
+            )
+
+        height = chunk_height or viewport_height
+
+        chunks: list[Path] = []
+
+        for index, y in enumerate(
+            range(0, page_height, height),
+            start=1,
+        ):
+            current_height = min(
+                height,
+                page_height - y,
+            )
+
+            path = output_dir / (
+                f"{prefix}-{index:03d}.png"
+            )
+
+            await self._page.screenshot(
+                path=str(path),
+                full_page=False,
+                clip={
+                    "x": 0,
+                    "y": y,
+                    "width": page_width,
+                    "height": current_height,
+                },
+            )
+
+            chunks.append(path)
+
+        return chunks
 
     async def get_dom_snapshot(self) -> str:
         """Return the current page HTML."""
