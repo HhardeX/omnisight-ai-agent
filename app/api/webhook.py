@@ -69,7 +69,7 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
             f"{audit_result.screenshot_path}"
         )
 
-                visual_service = VisualAuditService(
+        visual_service = VisualAuditService(
             create_vlm_provider()
         )
 
