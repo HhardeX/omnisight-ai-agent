@@ -1,4 +1,3 @@
-
 from pathlib import Path
 from uuid import uuid4
 
@@ -33,6 +32,7 @@ def _repair_was_already_attempted(
 
     return normalized_css in attempted_repairs
 
+
 def _requires_human_approval(
     confidence_score: float,
     threshold: float,
@@ -40,6 +40,7 @@ def _requires_human_approval(
     """Return True when repair confidence is below the approval threshold."""
 
     return confidence_score < threshold
+
 
 async def attempt_visual_repair(
     manager: BrowserManager,
@@ -86,9 +87,7 @@ async def attempt_visual_repair(
         full_page=True,
     )
 
-    repaired_dom_snapshot = (
-        await manager.get_dom_snapshot()
-    )
+    repaired_dom_snapshot = await manager.get_dom_snapshot()
 
     repaired_audit_result = BrowserAuditResult(
         job_id=audit_result.job_id,
@@ -167,18 +166,9 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                     full_page=True,
                 )
 
-                dom_snapshot = (
-                    await manager.get_dom_snapshot()
-                )
-
-                h1_bounds = (
-                    await manager.get_element_bounds("h1")
-                )
+                dom_snapshot = await manager.get_dom_snapshot()
 
                 element_bounds = {}
-
-                if h1_bounds is not None:
-                    element_bounds["h1"] = h1_bounds
 
                 audit_result = BrowserAuditResult(
                     job_id=job_id,
@@ -200,10 +190,8 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                     f"{audit_result.screenshot_path}"
                 )
 
-                visual_input = (
-                    visual_service.prepare_input(
-                        audit_result
-                    )
+                visual_input = visual_service.prepare_input(
+                    audit_result
                 )
 
                 visual_result = await visual_service.audit(
@@ -237,8 +225,10 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                             break
 
                         defect = visual_result.defects[0]
+
                         if (
-                            job_store.get_job(job_id)["approval_status"] != "approved"
+                            job_store.get_job(job_id)["approval_status"]
+                            != "approved"
                             and _requires_human_approval(
                                 confidence_score=defect.confidence_score,
                                 threshold=settings.approval_confidence_threshold,
@@ -265,9 +255,9 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                             )
 
                             result_store.save(
-                            audit_result,
-                            visual_result,
-            )
+                                audit_result,
+                                visual_result,
+                            )
 
                             return
 
@@ -416,4 +406,3 @@ async def receive_build_event(
             "audit scheduled."
         ),
     }
-
