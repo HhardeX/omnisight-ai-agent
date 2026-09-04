@@ -6,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, status
 from app.browser.navigator import BrowserManager
 from app.models.audit import BrowserAuditResult
 from app.models.jobs import BuildEvent
-from app.services.providers.rule_based_vlm import RuleBasedVLMProvider
+from app.services.providers.factory import create_vlm_provider
 from app.services.result_store import result_store
 from app.services.visual_audit import VisualAuditService
 
@@ -28,7 +28,7 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
     )
 
     visual_service = VisualAuditService(
-        RuleBasedVLMProvider()
+        create_vlm_provider()
     )
 
     for viewport_name in BrowserManager.VIEWPORTS:
