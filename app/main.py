@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.repair import router as repair_router
+from fastapi.staticfiles import StaticFiles
+from app.db.database import initialize_database
 
 
 from app.api.webhook import router as webhook_router
@@ -13,6 +15,11 @@ app = FastAPI(
     version="0.1.0",
 )
 
+@app.on_event("startup")
+async def startup_event() -> None:
+    initialize_database()
+
+app.mount("/artifacts", StaticFiles(directory="artifacts"), name="artifacts")
 # Allow the Vite frontend to communicate with the FastAPI backend
 app.add_middleware(
     CORSMiddleware,
