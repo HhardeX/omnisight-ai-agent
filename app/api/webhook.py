@@ -1,5 +1,7 @@
 
+import asyncio
 from pathlib import Path
+from threading import Thread
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, status
@@ -209,6 +211,39 @@ async def run_audit_job(
     )
 
 
+def run_audit_job_in_thread(
+    job_id: str,
+    event: BuildEvent,
+) -> None:
+    """
+    Run the async Playwright audit in a dedicated thread.
+
+    Windows Playwright launches Chromium through asyncio subprocesses.
+    Running the audit in its own thread and event loop prevents the
+    FastAPI/Uvicorn event loop from causing subprocess limitations.
+    """
+
+    print(
+        f"[OmniSight] Starting dedicated audit thread "
+        f"for job {job_id}"
+    )
+
+    try:
+        asyncio.run(
+            run_audit_job(
+                job_id,
+                event,
+            )
+        )
+
+    except Exception as exc:
+        print(
+            f"[OmniSight] Audit thread failed "
+            f"for job {job_id}: "
+            f"{type(exc).__name__}: {exc}"
+        )
+
+
 @router.post(
     "/build-event",
     status_code=status.HTTP_202_ACCEPTED,
@@ -223,12 +258,18 @@ async def receive_build_event(
 
     job_id = str(uuid4())
 
+    # Persist the real CI/CD metadata for this audit job.
+    result_store.save_build_event(
+        job_id,
+        event,
+    )
+
     print(
         f"[OmniSight] Scheduling audit job {job_id}"
     )
 
     background_tasks.add_task(
-        run_audit_job,
+        run_audit_job_in_thread,
         job_id,
         event,
     )

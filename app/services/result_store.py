@@ -1,4 +1,5 @@
 from app.models.audit import BrowserAuditResult
+from app.models.jobs import BuildEvent
 from app.models.visual import VisualAuditResponse
 
 
@@ -8,6 +9,25 @@ class AuditResultStore:
     def __init__(self) -> None:
         self._browser_results: dict[str, BrowserAuditResult] = {}
         self._visual_results: dict[str, VisualAuditResponse] = {}
+        self._build_events: dict[str, BuildEvent] = {}
+
+    def save_build_event(
+        self,
+        job_id: str,
+        build_event: BuildEvent,
+    ) -> None:
+        self._build_events[job_id] = build_event
+
+    def get_build_event(
+        self,
+        job_id: str,
+    ) -> BuildEvent | None:
+        return self._build_events.get(job_id)
+
+    def get_all_build_events(
+        self,
+    ) -> dict[str, BuildEvent]:
+        return dict(self._build_events)
 
     def save(
         self,

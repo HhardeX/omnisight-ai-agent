@@ -124,3 +124,76 @@ async def get_dashboard() -> dict:
         "total_screenshots": len(browser_results),
         "latest_build": latest_build,
     }
+
+
+@router.get("/pull-requests")
+async def get_pull_requests() -> list[dict]:
+    """
+    Return real CI/CD build metadata associated with audit jobs.
+
+    This endpoint does not invent GitHub pull request data.
+    It exposes only build events that were actually received
+    by the OmniSight backend.
+    """
+
+    build_events = result_store.get_all_build_events()
+    browser_results = result_store.get_all_browser_results()
+    visual_results = result_store.get_all_visual_results()
+
+    browser_by_job: dict[str, list] = {}
+
+    for result in browser_results:
+        browser_by_job.setdefault(
+            result.job_id,
+            [],
+        ).append(result)
+
+    visual_by_job: dict[str, list] = {}
+
+    for result in visual_results:
+        visual_by_job.setdefault(
+            result.job_id,
+            [],
+        ).append(result)
+
+    pull_requests = []
+
+    for job_id, event in build_events.items():
+        job_browser_results = browser_by_job.get(
+            job_id,
+            [],
+        )
+
+        job_visual_results = visual_by_job.get(
+            job_id,
+            [],
+        )
+
+        issue_count = sum(
+            result.defect_count
+            for result in job_visual_results
+        )
+
+        viewport_count = len(job_browser_results)
+
+        if viewport_count == 0:
+            status_value = "Pending"
+        elif issue_count > 0:
+            status_value = "Issues Found"
+        else:
+            status_value = "Verified"
+
+        pull_requests.append(
+            {
+                "job_id": job_id,
+                "repository": event.repository,
+                "commit_sha": event.commit_sha,
+                "branch": event.branch,
+                "target_url": str(event.target_url),
+                "viewport_count": viewport_count,
+                "issue_count": issue_count,
+                "status": status_value,
+            }
+        )
+
+    return pull_requests
