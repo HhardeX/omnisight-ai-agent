@@ -1,3 +1,4 @@
+
 from pathlib import Path
 from uuid import uuid4
 
@@ -9,6 +10,7 @@ from app.models.audit import BrowserAuditResult
 from app.models.jobs import BuildEvent
 from app.services.providers.rule_based_vlm import RuleBasedVLMProvider
 from app.services.result_store import result_store
+from app.services.job_store import job_store
 from app.services.visual_audit import VisualAuditService
 
 
@@ -16,6 +18,7 @@ router = APIRouter(
     prefix="/api/v1",
     tags=["webhook"],
 )
+
 
 def _repair_was_already_attempted(
     suggested_css: str,
@@ -29,6 +32,7 @@ def _repair_was_already_attempted(
         return True
 
     return normalized_css in attempted_repairs
+
 
 async def attempt_visual_repair(
     manager: BrowserManager,
@@ -101,222 +105,238 @@ async def attempt_visual_repair(
         repaired_visual_result,
     )
 
+
 async def run_audit_job(job_id: str, event: BuildEvent) -> None:
     """
     Execute responsive browser-based OmniSight audits.
     """
+
+    job_store.mark_running(job_id)
 
     print(
         f"[OmniSight] Starting audit job {job_id} "
         f"for {event.repository}@{event.commit_sha}"
     )
 
-    settings = get_settings()
+    try:
+        settings = get_settings()
 
-    if settings.vlm_provider == "ollama":
-        from app.services.providers.ollama_vlm import OllamaVLMProvider
+        if settings.vlm_provider == "ollama":
+            from app.services.providers.ollama_vlm import OllamaVLMProvider
 
-        provider = OllamaVLMProvider(
-            base_url=settings.ollama_base_url,
-            model=settings.ollama_model,
-        )
-    else:
-        provider = RuleBasedVLMProvider()
-
-    visual_service = VisualAuditService(provider)
-
-    for viewport_name in BrowserManager.VIEWPORTS:
-        manager = BrowserManager(headless=True)
-
-        try:
-            print(
-                f"[OmniSight] Starting {viewport_name} audit "
-                f"for job {job_id}"
+            provider = OllamaVLMProvider(
+                base_url=settings.ollama_base_url,
+                model=settings.ollama_model,
             )
+        else:
+            provider = RuleBasedVLMProvider()
 
-            await manager.start(
-                viewport=viewport_name
-            )
+        visual_service = VisualAuditService(provider)
 
-            await manager.navigate(
-                str(event.target_url)
-            )
+        for viewport_name in BrowserManager.VIEWPORTS:
+            manager = BrowserManager(headless=True)
 
-            screenshot_path = (
-                Path("artifacts")
-                / f"{job_id}-{viewport_name}.png"
-            )
-
-            await manager.screenshot(
-                screenshot_path,
-                full_page=True,
-            )
-
-            dom_snapshot = (
-                await manager.get_dom_snapshot()
-            )
-
-            h1_bounds = (
-                await manager.get_element_bounds("h1")
-            )
-
-            element_bounds = {}
-
-            if h1_bounds is not None:
-                element_bounds["h1"] = h1_bounds
-
-            audit_result = BrowserAuditResult(
-                job_id=job_id,
-                target_url=str(event.target_url),
-                viewport=viewport_name,
-                screenshot_path=screenshot_path,
-                dom_snapshot=dom_snapshot,
-                element_bounds=element_bounds,
-            )
-
-            print(
-                f"[OmniSight] {viewport_name} browser capture "
-                f"completed. "
-                f"DOM size: {audit_result.dom_size} characters"
-            )
-
-            print(
-                f"[OmniSight] Screenshot saved: "
-                f"{audit_result.screenshot_path}"
-            )
-
-            visual_input = (
-                visual_service.prepare_input(
-                    audit_result
-                )
-            )
-
-            visual_result = await visual_service.audit(
-                visual_input
-            )
-
-            print(
-                f"[OmniSight] {viewport_name} visual audit "
-                f"completed. "
-                f"Defects detected: "
-                f"{visual_result.defect_count}"
-            )
-
-            for defect in visual_result.defects:
+            try:
                 print(
-                    f"[OmniSight] Defect: "
-                    f"{defect.defect_type} | "
-                    f"{defect.element_selector} | "
-                    f"{defect.description}"
+                    f"[OmniSight] Starting {viewport_name} audit "
+                    f"for job {job_id}"
                 )
 
-            if visual_result.defect_count > 0:
-                max_repair_attempts = 3
-                attempted_repairs: set[str] = set()
+                await manager.start(
+                    viewport=viewport_name
+                )
 
-                for repair_attempt in range(
-                    1,
-                    max_repair_attempts + 1,
-                ):
-                    if visual_result.defect_count == 0:
-                        break
+                await manager.navigate(
+                    str(event.target_url)
+                )
 
-                    defect = visual_result.defects[0]
+                screenshot_path = (
+                    Path("artifacts")
+                    / f"{job_id}-{viewport_name}.png"
+                )
 
-                    if not defect.suggested_css:
-                        print(
-                            f"[OmniSight] {viewport_name} has no usable "
-                            f"CSS repair for "
-                            f"{defect.element_selector}"
-                        )
-                        break
+                await manager.screenshot(
+                    screenshot_path,
+                    full_page=True,
+                )
 
-                    if _repair_was_already_attempted(
-                        defect.suggested_css,
-                        attempted_repairs,
-                    ):
-                        print(
-                            f"[OmniSight] {viewport_name} already attempted "
-                            f"repair: {defect.suggested_css}"
-                        )
-                        break
+                dom_snapshot = (
+                    await manager.get_dom_snapshot()
+                )
 
-                    attempted_repairs.add(
-                        defect.suggested_css.strip()
+                h1_bounds = (
+                    await manager.get_element_bounds("h1")
+                )
+
+                element_bounds = {}
+
+                if h1_bounds is not None:
+                    element_bounds["h1"] = h1_bounds
+
+                audit_result = BrowserAuditResult(
+                    job_id=job_id,
+                    target_url=str(event.target_url),
+                    viewport=viewport_name,
+                    screenshot_path=screenshot_path,
+                    dom_snapshot=dom_snapshot,
+                    element_bounds=element_bounds,
+                )
+
+                print(
+                    f"[OmniSight] {viewport_name} browser capture "
+                    f"completed. "
+                    f"DOM size: {audit_result.dom_size} characters"
+                )
+
+                print(
+                    f"[OmniSight] Screenshot saved: "
+                    f"{audit_result.screenshot_path}"
+                )
+
+                visual_input = (
+                    visual_service.prepare_input(
+                        audit_result
                     )
+                )
 
-                    (
-                        final_audit_result,
-                        final_visual_result,
-                    ) = await attempt_visual_repair(
-                        manager=manager,
-                        visual_service=visual_service,
-                        audit_result=audit_result,
-                        visual_result=visual_result,
-                        repair_attempt=repair_attempt,
-                    )
+                visual_result = await visual_service.audit(
+                    visual_input
+                )
 
-                    audit_result = final_audit_result
-                    visual_result = final_visual_result
+                print(
+                    f"[OmniSight] {viewport_name} visual audit "
+                    f"completed. "
+                    f"Defects detected: "
+                    f"{visual_result.defect_count}"
+                )
 
+                for defect in visual_result.defects:
                     print(
-                        f"[OmniSight] {viewport_name} repair verification "
-                        f"attempt {repair_attempt} completed. "
-                        f"Remaining defects: "
-                        f"{visual_result.defect_count}"
+                        f"[OmniSight] Defect: "
+                        f"{defect.defect_type} | "
+                        f"{defect.element_selector} | "
+                        f"{defect.description}"
                     )
 
-                    if visual_result.defect_count == 0:
-                        print(
-                            f"[OmniSight] {viewport_name} visual repair "
-                            f"verified successfully on attempt "
-                            f"{repair_attempt}."
-                        )
-                        break
+                if visual_result.defect_count > 0:
+                    max_repair_attempts = 3
+                    attempted_repairs: set[str] = set()
 
-                    if repair_attempt < max_repair_attempts:
+                    for repair_attempt in range(
+                        1,
+                        max_repair_attempts + 1,
+                    ):
+                        if visual_result.defect_count == 0:
+                            break
+
+                        defect = visual_result.defects[0]
+
+                        if not defect.suggested_css:
+                            print(
+                                f"[OmniSight] {viewport_name} has no usable "
+                                f"CSS repair for "
+                                f"{defect.element_selector}"
+                            )
+                            break
+
+                        if _repair_was_already_attempted(
+                            defect.suggested_css,
+                            attempted_repairs,
+                        ):
+                            print(
+                                f"[OmniSight] {viewport_name} already attempted "
+                                f"repair: {defect.suggested_css}"
+                            )
+                            break
+
+                        attempted_repairs.add(
+                            defect.suggested_css.strip()
+                        )
+
+                        (
+                            final_audit_result,
+                            final_visual_result,
+                        ) = await attempt_visual_repair(
+                            manager=manager,
+                            visual_service=visual_service,
+                            audit_result=audit_result,
+                            visual_result=visual_result,
+                            repair_attempt=repair_attempt,
+                        )
+
+                        audit_result = final_audit_result
+                        visual_result = final_visual_result
+
                         print(
                             f"[OmniSight] {viewport_name} repair verification "
-                            f"failed. Retrying "
-                            f"({repair_attempt + 1}/"
-                            f"{max_repair_attempts})"
-                        )
-                    else:
-                        print(
-                            f"[OmniSight] {viewport_name} reached maximum "
-                            f"repair attempts "
-                            f"({max_repair_attempts})"
+                            f"attempt {repair_attempt} completed. "
+                            f"Remaining defects: "
+                            f"{visual_result.defect_count}"
                         )
 
-            result_store.save(
-                audit_result,
-                visual_result,
-            )
+                        if visual_result.defect_count == 0:
+                            print(
+                                f"[OmniSight] {viewport_name} visual repair "
+                                f"verified successfully on attempt "
+                                f"{repair_attempt}."
+                            )
+                            break
 
-            print(
-                f"[OmniSight] {viewport_name} visual audit "
-                f"completed. "
-                f"Defects detected: "
-                f"{visual_result.defect_count}"
-            )
+                        if repair_attempt < max_repair_attempts:
+                            print(
+                                f"[OmniSight] {viewport_name} repair verification "
+                                f"failed. Retrying "
+                                f"({repair_attempt + 1}/"
+                                f"{max_repair_attempts})"
+                            )
+                        else:
+                            print(
+                                f"[OmniSight] {viewport_name} reached maximum "
+                                f"repair attempts "
+                                f"({max_repair_attempts})"
+                            )
 
-            for defect in visual_result.defects:
-                print(
-                    f"[OmniSight] Defect: "
-                    f"{defect.defect_type} | "
-                    f"{defect.element_selector} | "
-                    f"{defect.description}"
+                result_store.save(
+                    audit_result,
+                    visual_result,
                 )
 
-            
+                print(
+                    f"[OmniSight] {viewport_name} visual audit "
+                    f"completed. "
+                    f"Defects detected: "
+                    f"{visual_result.defect_count}"
+                )
 
-        finally:
-            await manager.stop()
+                for defect in visual_result.defects:
+                    print(
+                        f"[OmniSight] Defect: "
+                        f"{defect.defect_type} | "
+                        f"{defect.element_selector} | "
+                        f"{defect.description}"
+                    )
 
-    print(
-        f"[OmniSight] Responsive audit job "
-        f"{job_id} completed."
-    )
+            finally:
+                await manager.stop()
+
+        job_store.mark_completed(job_id)
+
+        print(
+            f"[OmniSight] Responsive audit job "
+            f"{job_id} completed."
+        )
+
+    except Exception as exc:
+        job_store.mark_failed(
+            job_id,
+            str(exc),
+        )
+
+        print(
+            f"[OmniSight] Audit job {job_id} failed: {exc}"
+        )
+
+        raise
 
 
 @router.post(
@@ -332,6 +352,11 @@ async def receive_build_event(
     """
 
     job_id = str(uuid4())
+
+    job_store.create_job(
+        job_id,
+        event,
+    )
 
     print(
         f"[OmniSight] Scheduling audit job {job_id}"
@@ -351,3 +376,4 @@ async def receive_build_event(
             "audit scheduled."
         ),
     }
+

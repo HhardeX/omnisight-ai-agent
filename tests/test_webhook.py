@@ -1,4 +1,3 @@
-
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -27,6 +26,12 @@ async def test_receive_build_event_accepts_valid_event(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     expected_job_id = "test-job-id"
+
+    monkeypatch.setattr(
+        webhook,
+        "job_store",
+        MagicMock(),
+    )
 
     monkeypatch.setattr(
         webhook,
@@ -59,6 +64,12 @@ async def test_receive_build_event_schedules_run_audit_job(
 ) -> None:
     expected_job_id = "scheduled-job-id"
     captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        webhook,
+        "job_store",
+        MagicMock(),
+    )
 
     monkeypatch.setattr(
         webhook,
@@ -730,4 +741,3 @@ def test_repair_helper_detects_empty_css() -> None:
         "   ",
         attempted_repairs,
     )
-

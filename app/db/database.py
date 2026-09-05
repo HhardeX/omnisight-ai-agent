@@ -1,3 +1,4 @@
+
 from pathlib import Path
 import sqlite3
 
@@ -58,9 +59,23 @@ def initialize_database() -> None:
                 pull_request_url TEXT NOT NULL,
                 PRIMARY KEY (job_id, viewport)
             );
+
+            CREATE TABLE IF NOT EXISTS jobs (
+                job_id TEXT PRIMARY KEY,
+                repository TEXT NOT NULL,
+                commit_sha TEXT NOT NULL,
+                branch TEXT NOT NULL,
+                target_url TEXT NOT NULL,
+                status TEXT NOT NULL,
+                error_message TEXT,
+                created_at TEXT NOT NULL,
+                started_at TEXT,
+                completed_at TEXT
+            );
             """
         )
 
         connection.commit()
     finally:
         connection.close()
+

@@ -6,6 +6,8 @@ from app.api import results
 from app.models.audit import BrowserAuditResult, ElementBounds
 from app.models.visual import VisualAuditResponse, VisualDefect
 from app.services.result_store import AuditResultStore
+from app.models.jobs import BuildEvent
+from app.services.job_store import JobStore
 
 
 def make_browser_result(
@@ -207,4 +209,92 @@ async def test_get_dashboard_returns_empty_summary_when_store_is_empty() -> None
         "total_screenshots": 0,
         "latest_build": None,
     }
+    
+@pytest.mark.asyncio
+async def test_get_jobs_returns_persisted_job_history(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "test.db"
+
+    monkeypatch.setattr(
+        "app.db.database.DATABASE_PATH",
+        database_path,
+    )
+
+    from app.db.database import initialize_database
+
+    initialize_database()
+
+    store = JobStore()
+
+    event = BuildEvent(
+        repository="test/repo",
+        commit_sha="abc1234",
+        branch="feature/test",
+        target_url="https://example.com",
+    )
+
+    store.create_job("job-1", event)
+    store.mark_running("job-1")
+    store.mark_completed("job-1")
+
+    original_store = results.job_store
+    results.job_store = store
+
+    try:
+        response = await results.get_jobs()
+    finally:
+        results.job_store = original_store
+
+    assert len(response) == 1
+    assert response[0]["job_id"] == "job-1"
+    assert response[0]["repository"] == "test/repo"
+    assert response[0]["commit_sha"] == "abc1234"
+    assert response[0]["branch"] == "feature/test"
+    assert response[0]["status"] == "completed"
+    assert response[0]["error_message"] is None
+    assert response[0]["started_at"] is not None
+    assert response[0]["completed_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_get_job_returns_specific_job(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "test.db"
+
+    monkeypatch.setattr(
+        "app.db.database.DATABASE_PATH",
+        database_path,
+    )
+
+    from app.db.database import initialize_database
+
+    initialize_database()
+
+    store = JobStore()
+
+    event = BuildEvent(
+        repository="test/repo",
+        commit_sha="abc1234",
+        branch="feature/test",
+        target_url="https://example.com",
+    )
+
+    store.create_job("job-1", event)
+
+    original_store = results.job_store
+    results.job_store = store
+
+    try:
+        response = await results.get_job("job-1")
+    finally:
+        results.job_store = original_store
+
+    assert response is not None
+    assert response["job_id"] == "job-1"
+    assert response["status"] == "queued"
+    assert response["repository"] == "test/repo"
     

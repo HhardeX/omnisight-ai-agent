@@ -29,6 +29,16 @@ function Layout() {
       to: "/pull-requests",
       icon: "↗",
     },
+    {
+      label: "Audit History",
+      to: "/audit-history",
+      icon: "◫",
+    },
+    {
+      label: "Job Queue",
+      to: "/job-queue",
+      icon: "◌",
+    },
   ];
 
   return (
@@ -84,12 +94,12 @@ function Layout() {
 
           <div className="sidebar-user">
             <div className="sidebar-user-avatar">
-              A
+              O
             </div>
 
             <div className="sidebar-user-info">
-              <strong>Aishwarya</strong>
-              <span>Project Member</span>
+              <strong>OmniSight</strong>
+              <span>Project Admin</span>
             </div>
           </div>
         </div>

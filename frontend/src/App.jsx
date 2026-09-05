@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Layout from "./components/Layout";
+import AuditHistory from "./pages/AuditHistory";
+import JobQueue from "./pages/JobQueue";
 
 import Dashboard from "./pages/Dashboard";
 import Builds from "./pages/Builds";
@@ -18,6 +20,8 @@ function App() {
           <Route path="/issues" element={<Issues />} />
           <Route path="/screenshots" element={<Screenshots />} />
           <Route path="/pull-requests" element={<PullRequests />} />
+          <Route path="/audit-history" element={<AuditHistory />} />
+          <Route path="/job-queue" element={<JobQueue />} />
         </Route>
       </Routes>
     </BrowserRouter>

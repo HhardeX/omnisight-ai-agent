@@ -1,26 +1,61 @@
-import { pullRequests } from "../data/mockData";
+
+import { useEffect, useState } from "react";
+import { getPullRequests } from "../services/pullRequestService";
 
 function PullRequests() {
+  const [pullRequests, setPullRequests] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadPullRequests() {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const data = await getPullRequests();
+
+        if (isMounted) {
+          setPullRequests(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err.message || "Unable to load pull requests.");
+          setPullRequests([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadPullRequests();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <>
-      {/* ========================================
-          Pull Requests Header
-          ======================================== */}
       <header className="dashboard-header">
         <div>
           <h1>Pull Requests</h1>
           <p>Review pull requests and their automated UI test results.</p>
         </div>
 
-        <div className="environment" aria-label="Current environment: Staging">
+        <div
+          className="environment"
+          aria-label="Current environment: Staging"
+        >
           <span className="status-dot" aria-hidden="true" />
           <span>Staging</span>
         </div>
       </header>
 
-      {/* ========================================
-          Pull Request Content
-          ======================================== */}
       <section className="page-content">
         <div className="page-heading">
           <div>
@@ -31,55 +66,73 @@ function PullRequests() {
           </div>
         </div>
 
-        {/* ========================================
-            Pull Request List
-            ======================================== */}
+        {isLoading && (
+          <p role="status">
+            Loading pull requests...
+          </p>
+        )}
+
+        {error && (
+          <p role="alert">
+            Unable to load pull requests from the backend.
+          </p>
+        )}
+
+        {!isLoading && !error && pullRequests.length === 0 && (
+          <p role="status">
+            No pull requests have been published yet.
+          </p>
+        )}
+
         <div className="build-list">
-          {pullRequests.map((pullRequest) => (
-            <article className="build-row" key={pullRequest.id}>
-              {/* Pull Request Information */}
+          {pullRequests.map((pullRequest, index) => (
+            <article
+              className="build-row"
+              key={`${pullRequest.job_id}-${pullRequest.viewport}-${index}`}
+            >
               <div className="build-row-info">
-                <span className="latest-build-label">PULL REQUEST</span>
+                <span className="latest-build-label">
+                  PULL REQUEST
+                </span>
 
                 <h3>
-                  {pullRequest.id} — {pullRequest.title}
+                  {pullRequest.branch_name}
                 </h3>
 
                 <p>
-                  {pullRequest.branch} • {pullRequest.author} •{" "}
-                  {pullRequest.time}
+                  Build {pullRequest.job_id} •{" "}
+                  {pullRequest.viewport}
                 </p>
               </div>
 
-              {/* Pull Request Summary */}
               <div className="build-row-summary">
-                <span
-                  className={`status-badge ${
-                    pullRequest.status === "Passed" ? "success" : "warning"
-                  }`}
-                >
-                  <span className="build-status-dot" aria-hidden="true" />
-
-                  <span>{pullRequest.status}</span>
+                <span className="status-badge success">
+                  <span
+                    className="build-status-dot"
+                    aria-hidden="true"
+                  />
+                  <span>Published</span>
                 </span>
 
                 <div className="build-row-metrics">
                   <span>
-                    Checks <strong>{pullRequest.checks}</strong>
-                  </span>
-
-                  <span>
-                    UI Issues{" "}
-                    <strong
-                      className={
-                        pullRequest.issues === 0
-                          ? "success-text"
-                          : "failed-text"
-                      }
-                    >
-                      {pullRequest.issues}
+                    Commit{" "}
+                    <strong>
+                      {pullRequest.commit_sha
+                        ? pullRequest.commit_sha.slice(0, 8)
+                        : "-"}
                     </strong>
                   </span>
+
+                  {pullRequest.pull_request_url && (
+                    <a
+                      href={pullRequest.pull_request_url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      View PR
+                    </a>
+                  )}
                 </div>
               </div>
             </article>

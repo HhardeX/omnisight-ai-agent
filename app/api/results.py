@@ -1,5 +1,7 @@
+
 from fastapi import APIRouter
 
+from app.services.job_store import job_store
 from app.services.result_store import result_store
 
 
@@ -96,3 +98,18 @@ async def get_dashboard() -> dict:
         "total_screenshots": len(browser_results),
         "latest_build": latest_build,
     }
+
+
+@router.get("/jobs")
+async def get_jobs() -> list[dict]:
+    """Return persisted OmniSight job history."""
+
+    return job_store.get_all_jobs()
+
+
+@router.get("/jobs/{job_id}")
+async def get_job(job_id: str) -> dict | None:
+    """Return the persisted status of a specific OmniSight job."""
+
+    return job_store.get_job(job_id)
+

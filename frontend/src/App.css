@@ -150,13 +150,20 @@ a {
    Sidebar
    ========================================================= */
 
+/* =========================================================
+   Sidebar
+   ========================================================= */
+
 .sidebar {
-  width: 250px;
+  width: 248px;
   min-height: 100vh;
+
+  display: flex;
+  flex-direction: column;
 
   flex-shrink: 0;
 
-  padding: 28px 20px;
+  padding: 24px 16px 18px;
 
   background: #101018;
 
@@ -164,7 +171,25 @@ a {
 }
 
 .sidebar .omnisight-logo {
-  margin-bottom: 45px;
+  margin-bottom: 30px;
+}
+
+/* =========================================================
+   Sidebar Section Labels
+   ========================================================= */
+
+.sidebar-section-label {
+  margin: 0 10px 10px;
+
+  color: #6f6f7d;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+
+  text-transform: uppercase;
 }
 
 /* =========================================================
@@ -175,18 +200,22 @@ a {
   display: flex;
   flex-direction: column;
 
-  gap: 8px;
+  gap: 3px;
 }
 
 .nav-item {
   width: 100%;
 
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 
-  padding: 12px 14px;
+  box-sizing: border-box;
+
+  padding: 10px 12px;
 
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
 
   background: transparent;
 
@@ -196,7 +225,7 @@ a {
   font-size: 14px;
   font-weight: 500;
 
-  line-height: 1.4;
+  line-height: 20px;
 
   text-align: left;
   text-decoration: none;
@@ -204,18 +233,17 @@ a {
   cursor: pointer;
 
   transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .nav-item:hover {
-  background: rgba(124, 108, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
 
   color: #ffffff;
 
-  transform: translateX(2px);
+  transform: translateX(1px);
 }
 
 .nav-item:focus-visible {
@@ -224,7 +252,7 @@ a {
 }
 
 .nav-item.active {
-  background: rgba(124, 108, 255, 0.15);
+  background: rgba(124, 108, 255, 0.14);
 
   color: #ffffff;
 
@@ -232,7 +260,162 @@ a {
 }
 
 .nav-item:active {
-  transform: translateX(1px);
+  transform: translateX(0);
+}
+
+/* =========================================================
+   Sidebar Icons
+   ========================================================= */
+
+.nav-item-icon {
+  width: 20px;
+  min-width: 20px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  color: currentColor;
+
+  font-size: 15px;
+  line-height: 20px;
+
+  text-align: center;
+}
+
+/* =========================================================
+   Sidebar Bottom / System
+   ========================================================= */
+
+.sidebar-bottom {
+  margin-top: auto;
+  padding-top: 20px;
+}
+
+.sidebar-bottom::before {
+  content: "";
+
+  display: block;
+
+  height: 1px;
+
+  margin: 0 8px 20px;
+
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.sidebar-bottom-item {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  box-sizing: border-box;
+
+  padding: 10px 12px;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: transparent;
+
+  color: #9999a8;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+
+  line-height: 20px;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.sidebar-bottom-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+
+  color: #ffffff;
+}
+
+.sidebar-bottom-item:focus-visible {
+  outline: 2px solid rgba(124, 108, 255, 0.8);
+  outline-offset: 2px;
+}
+
+/* =========================================================
+   Sidebar User
+   ========================================================= */
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-top: 14px;
+  padding: 10px;
+
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.sidebar-user-avatar {
+  width: 32px;
+  height: 32px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 8px;
+
+  background: rgba(124, 108, 255, 0.16);
+
+  color: #ffffff;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sidebar-user-info {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.sidebar-user-info strong {
+  overflow: hidden;
+
+  color: #e9e9ef;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  line-height: 18px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-user-info span {
+  color: #70707e;
+
+  font-size: 11px;
+  font-weight: 500;
+
+  line-height: 16px;
 }
 
 /* =========================================================
