@@ -173,7 +173,7 @@ img {
   display: flex;
   flex-direction: column;
 
-  padding: 24px 16px;
+  padding: 22px 14px;
 
   background:
     linear-gradient(
@@ -191,7 +191,7 @@ img {
 }
 
 .sidebar .omnisight-logo {
-  margin: 2px 8px 34px;
+  margin: 2px 8px 28px;
 }
 
 
@@ -202,7 +202,7 @@ img {
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .nav-item {
@@ -264,6 +264,82 @@ img {
 .nav-item:focus-visible {
   outline: 2px solid rgba(129, 140, 248, 0.7);
   outline-offset: 2px;
+}
+
+
+.sidebar-section-label {
+  margin: 0 10px 10px;
+
+  color: #62677a;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+}
+
+.nav-item-icon {
+  width: 22px;
+  flex: 0 0 22px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-right: 10px;
+
+  color: #73788b;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.nav-item-label {
+  min-width: 0;
+}
+
+.nav-item.active .nav-item-icon {
+  color: #a5b4fc;
+}
+
+.nav-item:hover .nav-item-icon {
+  color: #c7d2fe;
+}
+
+
+.sidebar-section-label {
+  margin: 0 10px 10px;
+
+  color: #62677a;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+}
+
+.nav-item-icon {
+  width: 22px;
+  flex: 0 0 22px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-right: 10px;
+
+  color: #73788b;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.nav-item-label {
+  min-width: 0;
+}
+
+.nav-item.active .nav-item-icon {
+  color: #a5b4fc;
+}
+
+.nav-item:hover .nav-item-icon {
+  color: #c7d2fe;
 }
 
 
@@ -1587,7 +1663,7 @@ img {
   .sidebar-nav {
     flex-direction: row;
 
-    gap: 5px;
+    gap: 4px;
 
     overflow-x: auto;
 
@@ -1825,4 +1901,9 @@ img {
   .screenshot-preview a {
     transition: none !important;
   }
+}
+
+
+.failed-text {
+  color: #fca5a5 !important;
 }

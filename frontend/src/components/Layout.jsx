@@ -7,30 +7,29 @@ function Layout() {
       label: "Dashboard",
       to: "/",
       end: true,
-      icon: "▦",
+      icon: "\u25A6",
     },
     {
       label: "Builds",
       to: "/builds",
-      icon: "◈",
+      icon: "\u25C8",
     },
     {
       label: "Issues",
       to: "/issues",
-      icon: "⚠",
+      icon: "\u26A0",
     },
     {
       label: "Screenshots",
       to: "/screenshots",
-      icon: "▣",
+      icon: "\u25A3",
     },
     {
       label: "Pull Requests",
       to: "/pull-requests",
-      icon: "↗",
+      icon: "\u2197",
     },
   ];
-
   return (
     <div className="dashboard">
       <aside className="sidebar">
@@ -63,36 +62,6 @@ function Layout() {
             </NavLink>
           ))}
         </nav>
-
-        <div className="sidebar-bottom">
-          <div className="sidebar-section-label">
-            SYSTEM
-          </div>
-
-          <button
-            type="button"
-            className="sidebar-bottom-item"
-          >
-            <span className="nav-item-icon" aria-hidden="true">
-              ⚙
-            </span>
-
-            <span className="nav-item-label">
-              Settings
-            </span>
-          </button>
-
-          <div className="sidebar-user">
-            <div className="sidebar-user-avatar">
-              A
-            </div>
-
-            <div className="sidebar-user-info">
-              <strong>Aishwarya</strong>
-              <span>Project Member</span>
-            </div>
-          </div>
-        </div>
       </aside>
 
       <main className="dashboard-main">
