@@ -90,6 +90,24 @@ class BrowserManager:
 
         return self._page
 
+    async def inject_css(
+        self,
+        css: str,
+    ) -> None:
+        """Inject CSS into the active page without changing source files."""
+
+        if self._page is None:
+            raise RuntimeError(
+                "BrowserManager has not been started."
+            )
+
+        if not css.strip():
+            raise ValueError("CSS cannot be empty.")
+
+        await self._page.add_style_tag(
+            content=css,
+        )
+
     async def screenshot(
         self,
         output_path: str | Path,

@@ -1,3 +1,4 @@
+
 from pathlib import Path
 from uuid import uuid4
 
@@ -8,6 +9,7 @@ from app.models.audit import BrowserAuditResult
 from app.models.jobs import BuildEvent
 from app.services.providers.factory import create_vlm_provider
 from app.services.result_store import result_store
+from app.services.self_healing_workflow import SelfHealingWorkflow
 from app.services.visual_audit import VisualAuditService
 
 
@@ -17,9 +19,13 @@ router = APIRouter(
 )
 
 
-async def run_audit_job(job_id: str, event: BuildEvent) -> None:
+async def run_audit_job(
+    job_id: str,
+    event: BuildEvent,
+) -> None:
     """
-    Execute responsive browser-based OmniSight audits.
+    Execute responsive browser-based OmniSight audits
+    with self-healing verification.
     """
 
     print(
@@ -30,6 +36,8 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
     visual_service = VisualAuditService(
         create_vlm_provider()
     )
+
+    healing_workflow = SelfHealingWorkflow()
 
     for viewport_name in BrowserManager.VIEWPORTS:
         manager = BrowserManager(headless=True)
@@ -47,6 +55,10 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
             await manager.navigate(
                 str(event.target_url)
             )
+
+            # ---------------------------------------------------------
+            # 1. Capture initial browser state
+            # ---------------------------------------------------------
 
             screenshot_path = (
                 Path("artifacts")
@@ -91,6 +103,10 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                 f"{audit_result.screenshot_path}"
             )
 
+            # ---------------------------------------------------------
+            # 2. Run visual audit with VLM
+            # ---------------------------------------------------------
+
             visual_input = (
                 visual_service.prepare_input(
                     audit_result
@@ -101,6 +117,7 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                 visual_input
             )
 
+            # Store the original browser + visual audit result.
             result_store.save(
                 audit_result,
                 visual_result,
@@ -113,12 +130,67 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                 f"{visual_result.defect_count}"
             )
 
+            # ---------------------------------------------------------
+            # 3. Log detected defects
+            # ---------------------------------------------------------
+
             for defect in visual_result.defects:
                 print(
                     f"[OmniSight] Defect: "
                     f"{defect.defect_type} | "
                     f"{defect.element_selector} | "
                     f"{defect.description}"
+                )
+
+            # ---------------------------------------------------------
+            # 4. Start self-healing only when defects exist
+            # ---------------------------------------------------------
+
+            if visual_result.defect_count > 0:
+                print(
+                    f"[OmniSight] {viewport_name} "
+                    f"self-healing started."
+                )
+
+                healing_attempts = (
+                    await healing_workflow.heal(
+                        browser_manager=manager,
+                        visual_result=visual_result,
+                        visual_service=visual_service,
+                        job_id=job_id,
+                        target_url=str(event.target_url),
+                        viewport=viewport_name,
+                    )
+                )
+
+                if not healing_attempts:
+                    print(
+                        f"[OmniSight] {viewport_name} "
+                        f"self-healing produced no usable fixes."
+                    )
+
+                for attempt in healing_attempts:
+                    if healing_workflow.is_verified(
+                        attempt.verification
+                    ):
+                        verification_status = "verified"
+                    else:
+                        verification_status = "not verified"
+
+                    print(
+                        f"[OmniSight] Self-healing "
+                        f"{verification_status}: "
+                        f"{attempt.fix.element_selector} | "
+                        f"patch={attempt.patch_path} | "
+                        f"remaining defects="
+                        f"{attempt.verification.defect_count}"
+                    )
+
+            else:
+                print(
+                    f"[OmniSight] {viewport_name} "
+                    f"has no visual defects. "
+                    f"Self-healing not required."
                 )
 
         except Exception as exc:

@@ -1,5 +1,7 @@
-﻿from app.models.visual import VisualAuditResponse, VisualDefect
-from app.services.self_healing import SelfHealingService
+from pathlib import Path
+
+from app.models.visual import VisualAuditResponse, VisualDefect
+from app.services.self_healing import ProposedFix, SelfHealingService
 
 
 def test_self_healing_collects_css_fixes() -> None:
@@ -51,3 +53,44 @@ def test_self_healing_ignores_defects_without_css() -> None:
     fixes = SelfHealingService().collect_fixes(result)
 
     assert fixes == []
+
+
+def test_self_healing_applies_css_fix(tmp_path: Path) -> None:
+    output_path = tmp_path / "healing-patch.css"
+
+    fix = ProposedFix(
+        element_selector="#login",
+        suggested_css="margin-top: 8px;",
+    )
+
+    result_path = SelfHealingService().apply_css_fix(
+        output_path,
+        fix,
+    )
+
+    assert result_path == output_path
+    assert output_path.exists()
+
+    assert output_path.read_text(encoding="utf-8") == (
+        "#login {\n"
+        "    margin-top: 8px;\n"
+        "}\n"
+    )
+
+
+def test_self_healing_rejects_empty_css_fix(tmp_path: Path) -> None:
+    output_path = tmp_path / "healing-patch.css"
+
+    fix = ProposedFix(
+        element_selector="#login",
+        suggested_css="   ",
+    )
+
+    try:
+        SelfHealingService().apply_css_fix(
+            output_path,
+            fix,
+        )
+        assert False, "Expected ValueError"
+    except ValueError as exc:
+        assert str(exc) == "CSS fix declarations cannot be empty."

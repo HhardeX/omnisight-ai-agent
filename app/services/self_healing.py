@@ -1,4 +1,5 @@
-﻿from dataclasses import dataclass
+from dataclasses import dataclass
+from pathlib import Path
 
 from app.models.visual import VisualAuditResponse
 
@@ -39,3 +40,35 @@ class SelfHealingService:
             )
 
         return fixes
+
+    def apply_css_fix(
+        self,
+        output_path: str | Path,
+        fix: ProposedFix,
+    ) -> Path:
+        """Write a proposed CSS fix to an isolated patch file."""
+
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        selector = fix.element_selector.strip()
+        suggested_css = fix.suggested_css.strip()
+
+        if not selector:
+            raise ValueError("CSS fix selector cannot be empty.")
+
+        if not suggested_css:
+            raise ValueError("CSS fix declarations cannot be empty.")
+
+        css_rule = (
+            f"{selector} {{\n"
+            f"    {suggested_css}\n"
+            f"}}\n"
+        )
+
+        path.write_text(
+            css_rule,
+            encoding="utf-8",
+        )
+
+        return path
