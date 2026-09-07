@@ -1,4 +1,3 @@
-
 from pathlib import Path
 import sqlite3
 
@@ -70,12 +69,41 @@ def initialize_database() -> None:
                 error_message TEXT,
                 created_at TEXT NOT NULL,
                 started_at TEXT,
-                completed_at TEXT
+                completed_at TEXT,
+                approval_status TEXT NOT NULL DEFAULT 'not_required',
+                approval_reason TEXT,
+                approval_confidence REAL
             );
             """
         )
 
+        existing_columns = {
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(jobs)"
+            ).fetchall()
+        }
+
+        migrations = {
+            "approval_status": (
+                "ALTER TABLE jobs "
+                "ADD COLUMN approval_status TEXT "
+                "NOT NULL DEFAULT 'not_required'"
+            ),
+            "approval_reason": (
+                "ALTER TABLE jobs "
+                "ADD COLUMN approval_reason TEXT"
+            ),
+            "approval_confidence": (
+                "ALTER TABLE jobs "
+                "ADD COLUMN approval_confidence REAL"
+            ),
+        }
+
+        for column, statement in migrations.items():
+            if column not in existing_columns:
+                connection.execute(statement)
+
         connection.commit()
     finally:
         connection.close()
-

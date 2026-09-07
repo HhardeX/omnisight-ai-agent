@@ -1,10 +1,9 @@
 from unittest.mock import MagicMock
 
-from app.services.repair import RepairService
 from fastapi.testclient import TestClient
 
 from app.main import app
-
+from app.services.repair import RepairService
 
 
 def test_publish_repair_creates_branch_commits_file_and_opens_pr() -> None:
@@ -54,6 +53,8 @@ def test_publish_repair_creates_branch_commits_file_and_opens_pr() -> None:
     assert result.pull_request_url == (
         "https://github.com/owner/repository/pull/123"
     )
+
+
 def test_repair_api_publishes_repair(monkeypatch) -> None:
     github = MagicMock()
 
@@ -151,6 +152,7 @@ def test_repair_api_returns_502_when_github_fails(monkeypatch) -> None:
         github_base_branch = "main"
 
     github = MagicMock()
+
     github.create_branch.side_effect = RuntimeError(
         "GitHub unavailable"
     )
@@ -186,8 +188,11 @@ def test_repair_api_returns_502_when_github_fails(monkeypatch) -> None:
     )
 
     github.close.assert_called_once()
-    
-def test_pull_requests_api_returns_published_repairs(monkeypatch) -> None:
+
+
+def test_pull_requests_api_returns_published_repairs(
+    monkeypatch,
+) -> None:
     github = MagicMock()
 
     github.update_file.return_value = "repair-commit-sha"
@@ -254,3 +259,216 @@ def test_pull_requests_api_returns_published_repairs(monkeypatch) -> None:
     )
 
     github.close.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Feature 3: AI Confidence + Human Approval Gate
+# ---------------------------------------------------------------------------
+
+
+def test_approval_api_returns_404_for_unknown_job(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.api.repair.job_store.get_job",
+        lambda job_id: None,
+    )
+
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/jobs/unknown-job/approval",
+        json={"decision": "approve"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Job not found."
+
+
+def test_approval_api_returns_409_for_non_pending_job(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.api.repair.job_store.get_job",
+        lambda job_id: {
+            "job_id": job_id,
+            "approval_status": "not_required",
+        },
+    )
+
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/jobs/job-completed/approval",
+        json={"decision": "approve"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Job does not have a pending approval request."
+    )
+
+
+def test_approval_api_approve_schedules_audit(
+    monkeypatch,
+) -> None:
+    job = {
+        "job_id": "job-approve-001",
+        "repository": "test/repo",
+        "commit_sha": "abc1234",
+        "branch": "feature/test",
+        "target_url": "http://example.com/",
+        "approval_status": "pending",
+    }
+
+    monkeypatch.setattr(
+        "app.api.repair.job_store.get_job",
+        lambda job_id: job,
+    )
+
+    approve_job = MagicMock()
+
+    monkeypatch.setattr(
+        "app.api.repair.job_store.approve_job",
+        approve_job,
+    )
+
+    scheduled_tasks = []
+
+    def fake_add_task(self, function, *args, **kwargs):
+        scheduled_tasks.append(
+            (function, args, kwargs)
+        )
+
+    monkeypatch.setattr(
+        "app.api.repair.BackgroundTasks.add_task",
+        fake_add_task,
+    )
+
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/jobs/job-approve-001/approval",
+        json={"decision": "approve"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["job_id"] == "job-approve-001"
+    assert data["approval_status"] == "approved"
+
+    approve_job.assert_called_once_with(
+        "job-approve-001"
+    )
+
+    assert len(scheduled_tasks) == 1
+
+    function, args, kwargs = scheduled_tasks[0]
+
+    assert function.__name__ == "run_audit_job"
+    assert args[0] == "job-approve-001"
+
+    event = args[1]
+
+    assert event.repository == "test/repo"
+    assert event.commit_sha == "abc1234"
+    assert event.branch == "feature/test"
+    assert str(event.target_url) == "http://example.com/"
+
+    assert kwargs == {}
+
+
+def test_approval_api_reject_completes_without_scheduling(
+    monkeypatch,
+) -> None:
+    job = {
+        "job_id": "job-reject-001",
+        "repository": "test/repo",
+        "commit_sha": "abc123",
+        "branch": "feature/test",
+        "target_url": "http://example.com/",
+        "approval_status": "pending",
+    }
+
+    monkeypatch.setattr(
+        "app.api.repair.job_store.get_job",
+        lambda job_id: job,
+    )
+
+    reject_job = MagicMock()
+    mark_completed = MagicMock()
+
+    monkeypatch.setattr(
+        "app.api.repair.job_store.reject_job",
+        reject_job,
+    )
+
+    monkeypatch.setattr(
+        "app.api.repair.job_store.mark_completed",
+        mark_completed,
+    )
+
+    add_task = MagicMock()
+
+    monkeypatch.setattr(
+        "app.api.repair.BackgroundTasks.add_task",
+        add_task,
+    )
+
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/jobs/job-reject-001/approval",
+        json={"decision": "reject"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["job_id"] == "job-reject-001"
+    assert data["approval_status"] == "rejected"
+
+    reject_job.assert_called_once_with(
+        "job-reject-001"
+    )
+
+    mark_completed.assert_called_once_with(
+        "job-reject-001"
+    )
+
+    add_task.assert_not_called()
+
+
+def test_approved_job_can_bypass_low_confidence_gate(
+    monkeypatch,
+) -> None:
+    job = {
+        "job_id": "job-approved-low-confidence",
+        "approval_status": "approved",
+    }
+
+    monkeypatch.setattr(
+        "app.api.webhook.job_store.get_job",
+        lambda job_id: job,
+    )
+
+    from app.api.webhook import _requires_human_approval
+
+    confidence = 0.40
+    threshold = 0.85
+
+    assert _requires_human_approval(
+        confidence_score=confidence,
+        threshold=threshold,
+    )
+
+    assert job["approval_status"] == "approved"
+
+    assert not (
+        job["approval_status"] != "approved"
+        and _requires_human_approval(
+            confidence_score=confidence,
+            threshold=threshold,
+        )
+    )

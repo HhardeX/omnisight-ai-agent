@@ -1,10 +1,18 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
+from app.api.webhook import run_audit_job
 from app.core.config import get_settings
-from app.models.repair import RepairRequest, RepairResponse
+from app.models.jobs import BuildEvent
+from app.models.repair import (
+    ApprovalRequest,
+    ApprovalResponse,
+    RepairRequest,
+    RepairResponse,
+)
 from app.services.github import GitHubService
 from app.services.repair import RepairService
 from app.services.result_store import PublishedRepair, result_store
+from app.services.job_store import job_store
 
 
 router = APIRouter(
@@ -69,7 +77,9 @@ async def publish_repair(
             pull_request_url=result.pull_request_url,
         )
 
-        result_store.save_published_repair(published_repair)
+        result_store.save_published_repair(
+            published_repair
+        )
 
         return RepairResponse(
             job_id=request.job_id,
@@ -87,7 +97,66 @@ async def publish_repair(
 
     finally:
         github_service.close()
-        
+
+
+@router.post(
+    "/jobs/{job_id}/approval",
+    response_model=ApprovalResponse,
+)
+async def update_job_approval(
+    job_id: str,
+    request: ApprovalRequest,
+    background_tasks: BackgroundTasks,
+) -> ApprovalResponse:
+    """Approve or reject a pending repair."""
+
+    job = job_store.get_job(job_id)
+
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found.",
+        )
+
+    if job["approval_status"] != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Job does not have a pending "
+                "approval request."
+            ),
+        )
+
+    if request.decision == "reject":
+        job_store.reject_job(job_id)
+        job_store.mark_completed(job_id)
+
+        return ApprovalResponse(
+            job_id=job_id,
+            approval_status="rejected",
+        )
+
+    job_store.approve_job(job_id)
+
+    event = BuildEvent(
+        repository=job["repository"],
+        commit_sha=job["commit_sha"],
+        branch=job["branch"],
+        target_url=job["target_url"],
+    )
+
+    background_tasks.add_task(
+        run_audit_job,
+        job_id,
+        event,
+    )
+
+    return ApprovalResponse(
+        job_id=job_id,
+        approval_status="approved",
+    )
+
+
 @router.get("/pull-requests")
 async def get_pull_requests() -> list[dict]:
     """Return successfully published repair pull requests."""

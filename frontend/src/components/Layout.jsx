@@ -39,6 +39,11 @@ function Layout() {
       to: "/job-queue",
       icon: "◌",
     },
+    {
+      label: "Human Approvals",
+      to: "/human-approvals",
+      icon: "✓",
+    },
   ];
 
   return (

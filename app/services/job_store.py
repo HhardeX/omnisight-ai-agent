@@ -1,4 +1,3 @@
-
 from datetime import datetime, timezone
 
 from app.db.database import get_connection
@@ -64,6 +63,14 @@ class JobStore:
             completed_at=self._now(),
         )
 
+    def mark_awaiting_approval(self, job_id: str) -> None:
+        """Mark a job as waiting for human repair approval."""
+
+        self._update_status(
+            job_id=job_id,
+            status="awaiting_approval",
+        )
+
     def mark_failed(
         self,
         job_id: str,
@@ -74,6 +81,54 @@ class JobStore:
             status="failed",
             error_message=error_message,
             completed_at=self._now(),
+        )
+
+    def request_approval(
+        self,
+        job_id: str,
+        reason: str,
+        confidence: float,
+    ) -> None:
+        """Mark a job as waiting for human approval."""
+
+        connection = get_connection()
+
+        try:
+            connection.execute(
+                """
+                UPDATE jobs
+                SET
+                    approval_status = ?,
+                    approval_reason = ?,
+                    approval_confidence = ?
+                WHERE job_id = ?
+                """,
+                (
+                    "pending",
+                    reason,
+                    confidence,
+                    job_id,
+                ),
+            )
+
+            connection.commit()
+        finally:
+            connection.close()
+
+    def approve_job(self, job_id: str) -> None:
+        """Mark a pending job as approved for repair."""
+
+        self._update_approval_status(
+            job_id=job_id,
+            approval_status="approved",
+        )
+
+    def reject_job(self, job_id: str) -> None:
+        """Mark a pending job as rejected."""
+
+        self._update_approval_status(
+            job_id=job_id,
+            approval_status="rejected",
         )
 
     def get_job(
@@ -95,7 +150,10 @@ class JobStore:
                     error_message,
                     created_at,
                     started_at,
-                    completed_at
+                    completed_at,
+                    approval_status,
+                    approval_reason,
+                    approval_confidence
                 FROM jobs
                 WHERE job_id = ?
                 """,
@@ -125,7 +183,10 @@ class JobStore:
                     error_message,
                     created_at,
                     started_at,
-                    completed_at
+                    completed_at,
+                    approval_status,
+                    approval_reason,
+                    approval_confidence
                 FROM jobs
                 ORDER BY created_at DESC
                 """
@@ -169,10 +230,33 @@ class JobStore:
         finally:
             connection.close()
 
+    def _update_approval_status(
+        self,
+        job_id: str,
+        approval_status: str,
+    ) -> None:
+        connection = get_connection()
+
+        try:
+            connection.execute(
+                """
+                UPDATE jobs
+                SET approval_status = ?
+                WHERE job_id = ?
+                """,
+                (
+                    approval_status,
+                    job_id,
+                ),
+            )
+
+            connection.commit()
+        finally:
+            connection.close()
+
     @staticmethod
     def _now() -> str:
         return datetime.now(timezone.utc).isoformat()
 
 
 job_store = JobStore()
-

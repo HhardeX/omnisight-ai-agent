@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     github_token: str = ""
     github_repository: str = ""
     github_base_branch: str = "main"
+    approval_confidence_threshold: float = 0.85
 
 
 @lru_cache

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -21,3 +23,16 @@ class RepairResponse(BaseModel):
     branch_name: str = Field(min_length=1)
     commit_sha: str = Field(min_length=1)
     pull_request_url: str = Field(min_length=1)
+
+
+class ApprovalRequest(BaseModel):
+    """Request to approve or reject a pending repair."""
+
+    decision: Literal["approve", "reject"]
+
+
+class ApprovalResponse(BaseModel):
+    """Response returned after updating repair approval."""
+
+    job_id: str = Field(min_length=1)
+    approval_status: Literal["approved", "rejected"]

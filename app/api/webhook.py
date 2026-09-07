@@ -33,6 +33,13 @@ def _repair_was_already_attempted(
 
     return normalized_css in attempted_repairs
 
+def _requires_human_approval(
+    confidence_score: float,
+    threshold: float,
+) -> bool:
+    """Return True when repair confidence is below the approval threshold."""
+
+    return confidence_score < threshold
 
 async def attempt_visual_repair(
     manager: BrowserManager,
@@ -230,6 +237,39 @@ async def run_audit_job(job_id: str, event: BuildEvent) -> None:
                             break
 
                         defect = visual_result.defects[0]
+                        if (
+                            job_store.get_job(job_id)["approval_status"] != "approved"
+                            and _requires_human_approval(
+                                confidence_score=defect.confidence_score,
+                                threshold=settings.approval_confidence_threshold,
+                            )
+                        ):
+                            job_store.request_approval(
+                                job_id=job_id,
+                                reason=(
+                                    f"Low-confidence repair for "
+                                    f"{defect.element_selector}: "
+                                    f"{defect.description}"
+                                ),
+                                confidence=defect.confidence_score,
+                            )
+
+                            job_store.mark_awaiting_approval(job_id)
+
+                            print(
+                                f"[OmniSight] {viewport_name} repair requires "
+                                f"human approval. "
+                                f"Confidence: {defect.confidence_score:.2f}, "
+                                f"threshold: "
+                                f"{settings.approval_confidence_threshold:.2f}"
+                            )
+
+                            result_store.save(
+                            audit_result,
+                            visual_result,
+            )
+
+                            return
 
                         if not defect.suggested_css:
                             print(

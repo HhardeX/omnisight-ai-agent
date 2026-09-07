@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import AuditHistory from "./pages/AuditHistory";
 import JobQueue from "./pages/JobQueue";
+import HumanApprovals from "./pages/HumanApprovals";
 
 import Dashboard from "./pages/Dashboard";
 import Builds from "./pages/Builds";
@@ -22,6 +23,10 @@ function App() {
           <Route path="/pull-requests" element={<PullRequests />} />
           <Route path="/audit-history" element={<AuditHistory />} />
           <Route path="/job-queue" element={<JobQueue />} />
+          <Route
+            path="/human-approvals"
+            element={<HumanApprovals />}
+          />
         </Route>
       </Routes>
     </BrowserRouter>

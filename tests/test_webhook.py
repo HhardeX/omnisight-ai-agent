@@ -741,3 +741,30 @@ def test_repair_helper_detects_empty_css() -> None:
         "   ",
         attempted_repairs,
     )
+
+def test_confidence_gate_allows_high_confidence_repair() -> None:
+    assert not webhook._requires_human_approval(
+        confidence_score=0.90,
+        threshold=0.85,
+    )
+
+
+def test_confidence_gate_allows_threshold_confidence_repair() -> None:
+    assert not webhook._requires_human_approval(
+        confidence_score=0.85,
+        threshold=0.85,
+    )
+
+
+def test_confidence_gate_requires_approval_below_threshold() -> None:
+    assert webhook._requires_human_approval(
+        confidence_score=0.84,
+        threshold=0.85,
+    )
+
+
+def test_confidence_gate_requires_approval_for_low_confidence() -> None:
+    assert webhook._requires_human_approval(
+        confidence_score=0.50,
+        threshold=0.85,
+    )
