@@ -222,3 +222,5 @@ __marimo__/
 # Generated local artifacts
 .snapshots/
 artifacts/
+
+.vscode/
