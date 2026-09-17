@@ -1,3 +1,19 @@
+import asyncio
+import sys
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(
+        asyncio.WindowsProactorEventLoopPolicy()
+    )
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.api.repair import router as repair_router
+from fastapi.staticfiles import StaticFiles
+from app.db.database import initialize_database
+
+from app.api.webhook import router as webhook_router
+from app.api.results import router as results_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.repair import router as repair_router
